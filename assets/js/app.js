@@ -1,4 +1,6 @@
-const APP_VERSION = "0.3.2";
+const APP_VERSION = "0.3.3";
+const TILE_RESOURCES_HELP =
+  "Pour afficher la carte, assurez-vous que Leaflet (assets/vendor/leaflet/leaflet.js et leaflet.css) est chargé et que l'accès aux tuiles OpenStreetMap (https://{s}.tile.openstreetmap.org) est autorisé.";
 
 document.getElementById("versionLabel").textContent = APP_VERSION;
 
@@ -257,6 +259,19 @@ const state = {
   countryLayers: {}
 };
 
+function showResourceNotice(message) {
+  const notice = document.getElementById("resourceNotice");
+  if (!notice) return;
+  notice.textContent = message;
+  notice.classList.add("is-visible");
+}
+
+function hideResourceNotice() {
+  const notice = document.getElementById("resourceNotice");
+  if (!notice) return;
+  notice.classList.remove("is-visible");
+}
+
 function cloneThemes(data) {
   if (typeof structuredClone === "function") {
     return structuredClone(data);
@@ -339,13 +354,18 @@ function showTooltipForCountry(id, event) {
 function createMap() {
   const container = document.getElementById("map");
   container.innerHTML = "";
+  hideResourceNotice();
   state.map = L.map(container, { worldCopyJump: true });
 
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  const tiles = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 6,
     minZoom: 2,
     attribution: "© OpenStreetMap contributeurs"
-  }).addTo(state.map);
+  });
+
+  tiles.addEventListener("load", () => hideResourceNotice());
+  tiles.addEventListener("tileerror", () => showResourceNotice(TILE_RESOURCES_HELP));
+  tiles.addTo(state.map);
 
   const bounds = L.latLngBounds([]);
   COUNTRY_SHAPES.forEach((country) => {

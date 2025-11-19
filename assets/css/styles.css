@@ -201,6 +201,22 @@ main {
   z-index: 5;
 }
 
+.resource-notice {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--stroke);
+  border-radius: 10px;
+  background: #fff7ed;
+  color: #9a3412;
+  font-size: 14px;
+  display: none;
+  box-shadow: var(--shadow);
+}
+
+.resource-notice.is-visible {
+  display: block;
+}
+
 .tooltip.visible {
   opacity: 1;
 }
