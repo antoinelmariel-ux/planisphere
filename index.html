@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Planisphère Compliance</title>
+  <link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <button class="burger" id="burgerButton" aria-label="Ouvrir le menu">☰</button>
+    <div>
+      <p class="eyebrow">Pilotage compliance</p>
+      <h1>Planisphère interactif</h1>
+    </div>
+    <div class="header-actions">
+      <button class="ghost" id="toggleBackOffice">Back-office</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav id="themeMenu" class="theme-menu" aria-label="Choix de thématique">
+      <h2>Thématiques</h2>
+      <ul id="themeList"></ul>
+    </nav>
+
+    <main>
+      <section class="map-panel">
+        <div class="map-shell">
+          <div id="map" class="map"></div>
+          <div id="legend" class="legend"></div>
+          <div id="tooltip" class="tooltip" role="tooltip"></div>
+        </div>
+      </section>
+
+      <section class="insights" id="insightsPanel">
+        <header>
+          <div>
+            <p class="eyebrow">Contexte</p>
+            <h2 id="insightTitle">Sélectionnez une thématique</h2>
+          </div>
+          <div class="pill" id="themeMode"></div>
+        </header>
+        <div class="insight-body" id="insightBody">
+          <p>Choisissez une thématique dans le menu burger pour voir les informations clés sur vos pays.</p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <aside id="backOffice" class="back-office" aria-label="Back-office de configuration">
+    <div class="back-office__header">
+      <div>
+        <p class="eyebrow">Configuration</p>
+        <h3>Back-office</h3>
+      </div>
+      <button class="ghost" id="closeBackOffice">Fermer</button>
+    </div>
+    <form id="backOfficeForm" class="back-office__form">
+      <label>
+        Thématique
+        <select id="themeSelect"></select>
+      </label>
+
+      <label>
+        Pays
+        <select id="countrySelect"></select>
+      </label>
+
+      <div id="dynamicFields"></div>
+
+      <div class="form-actions">
+        <button type="button" id="resetData" class="ghost">Réinitialiser les données par défaut</button>
+        <button type="submit" class="primary">Enregistrer</button>
+      </div>
+    </form>
+    <p class="helper">Les modifications sont conservées dans votre navigateur (localStorage) pour un usage 100% local.</p>
+  </aside>
+
+  <footer class="footer">
+    <p>Planisphère compliance – version <strong id="versionLabel">0.1.0</strong></p>
+  </footer>
+
+  <script src="assets/js/app.js"></script>
+</body>
+</html>
