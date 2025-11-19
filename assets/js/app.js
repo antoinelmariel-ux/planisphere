@@ -1,4 +1,4 @@
-const APP_VERSION = "0.2.0";
+const APP_VERSION = "0.3.0";
 
 document.getElementById("versionLabel").textContent = APP_VERSION;
 
@@ -81,6 +81,46 @@ const DEFAULT_THEMES = {
         country: "Inde",
         complianceLead: "Amit Sharma (Sponsor : CTO Groupe)",
         legal: "IT Rules, prévention fraude, concurrence"
+      },
+      CAN: {
+        employees: 260,
+        revenue: "220 M$",
+        activity: "Distribution et support régional",
+        country: "Canada",
+        complianceLead: "Sophie Tremblay (Sponsor : CRO Amériques)",
+        legal: "LPRPDE, lutte anticorruption, obligations export"
+      },
+      DEU: {
+        employees: 310,
+        revenue: "275 M€",
+        activity: "Promotion et opérations industrielles",
+        country: "Allemagne",
+        complianceLead: "Karl Hoffmann (Sponsor : COO Europe)",
+        legal: "BAFA export control, concurrence, RGPD"
+      },
+      ESP: {
+        employees: 140,
+        revenue: "95 M€",
+        activity: "Promotion & collecte",
+        country: "Espagne",
+        complianceLead: "Lucía Ramos (Sponsor : Directeur Europe Sud)",
+        legal: "RGPD, Sapin II local, obligations CNMC"
+      },
+      ARE: {
+        employees: 120,
+        revenue: "70 M$",
+        activity: "Hub régional et support partenaires",
+        country: "Émirats arabes unis",
+        complianceLead: "Yara Al Nahyan (Sponsor : Area Manager 2)",
+        legal: "Lutte anti-blanchiment, obligations Emirats, données sensibles"
+      },
+      AUS: {
+        employees: 150,
+        revenue: "110 M$",
+        activity: "Distribution, support et R&D locale",
+        country: "Australie",
+        complianceLead: "Oliver Grant (Sponsor : CTO APAC)",
+        legal: "Privacy Act, lois anticorruption, sécurité produits"
       }
     }
   },
@@ -107,7 +147,10 @@ const DEFAULT_THEMES = {
       AUS: 75,
       MEX: 31,
       TUR: 36,
-      ARE: 68
+      ARE: 68,
+      MAR: 38,
+      EGY: 29,
+      KOR: 63
     }
   },
   revenueShare: {
@@ -128,7 +171,10 @@ const DEFAULT_THEMES = {
       NGA: 2,
       ARE: 3,
       JPN: 3,
-      MEX: 2
+      MEX: 2,
+      CAN: 5,
+      ESP: 3,
+      ITA: 2
     }
   },
   subsidiaryType: {
@@ -152,7 +198,10 @@ const DEFAULT_THEMES = {
       AUS: "Distributeur",
       IND: "Promotion & Collecte",
       JPN: "Promotion",
-      ESP: "Promotion"
+      ESP: "Promotion",
+      TUR: "Collecte",
+      MAR: "Promotion",
+      CAN: "Promotion & Collecte"
     }
   },
   products: {
@@ -167,7 +216,10 @@ const DEFAULT_THEMES = {
       GBR: { products: ["Suite data", "Screening tiers"] },
       NGA: { products: ["Screening tiers", "KYC mobile"] },
       IND: { products: ["Suite data", "KYC mobile", "Monitoring IA"] },
-      BRA: { products: ["Suite data", "Screening tiers"] }
+      BRA: { products: ["Suite data", "Screening tiers"] },
+      ESP: { products: ["API open compliance", "Monitoring IA"] },
+      CAN: { products: ["Suite data", "Tableaux M&A"] },
+      AUS: { products: ["Screening tiers", "KYC mobile"] }
     }
   },
   areaManager: {
@@ -183,10 +235,13 @@ const DEFAULT_THEMES = {
       FRA: "Area Manager 1",
       GBR: "Area Manager 1",
       DEU: "Area Manager 1",
+      CAN: "Area Manager 1",
       USA: "Area Manager 2",
       MEX: "Area Manager 2",
       BRA: "Area Manager 2",
       NGA: "Area Manager 2",
+      ESP: "Area Manager 2",
+      ARE: "Area Manager 2",
       IND: "Area Manager 3",
       CHN: "Area Manager 3",
       JPN: "Area Manager 3",
