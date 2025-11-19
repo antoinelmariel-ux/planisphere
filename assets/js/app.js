@@ -1,4 +1,4 @@
-const APP_VERSION = "0.3.0";
+const APP_VERSION = "0.3.1";
 
 document.getElementById("versionLabel").textContent = APP_VERSION;
 
@@ -257,6 +257,13 @@ const state = {
   countryLayers: {}
 };
 
+function cloneThemes(data) {
+  if (typeof structuredClone === "function") {
+    return structuredClone(data);
+  }
+  return JSON.parse(JSON.stringify(data));
+}
+
 function boundsToLatLng(bounds) {
   const [minLon, minLat, maxLon, maxLat] = bounds;
   return [
@@ -274,7 +281,7 @@ function loadThemes() {
   } catch (error) {
     console.warn("Impossible de charger le cache", error);
   }
-  return structuredClone(DEFAULT_THEMES);
+  return cloneThemes(DEFAULT_THEMES);
 }
 
 function persistThemes() {
@@ -634,7 +641,7 @@ function setupBackOffice() {
   close.addEventListener("click", () => panel.classList.remove("is-open"));
   document.getElementById("backOfficeForm").addEventListener("submit", handleBackOfficeSubmit);
   document.getElementById("resetData").addEventListener("click", () => {
-    state.themes = structuredClone(DEFAULT_THEMES);
+    state.themes = cloneThemes(DEFAULT_THEMES);
     persistThemes();
     buildMenu();
     buildBackOffice();
