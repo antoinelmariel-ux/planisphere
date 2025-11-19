@@ -1,4 +1,4 @@
-const APP_VERSION = "0.1.0";
+const APP_VERSION = "0.2.0";
 
 document.getElementById("versionLabel").textContent = APP_VERSION;
 
@@ -196,37 +196,18 @@ const DEFAULT_THEMES = {
 };
 
 const state = {
-  width: 1100,
-  height: 600,
   currentTheme: "countryProfile",
-  themes: loadThemes()
+  themes: loadThemes(),
+  map: null,
+  countryLayers: {}
 };
 
-function mercator([lon, lat]) {
-  const lambda = (lon * Math.PI) / 180;
-  const phi = (lat * Math.PI) / 180;
-  const x = (state.width * (lon + 180)) / 360;
-  const mercN = Math.log(Math.tan(Math.PI / 4 + phi / 2));
-  const y = state.height / 2 - (state.width * mercN) / (2 * Math.PI);
-  return [x, y];
-}
-
-function buildPolygon(bounds) {
+function boundsToLatLng(bounds) {
   const [minLon, minLat, maxLon, maxLat] = bounds;
   return [
-    [minLon, minLat],
-    [maxLon, minLat],
-    [maxLon, maxLat],
-    [minLon, maxLat],
-    [minLon, minLat]
+    [minLat, minLon],
+    [maxLat, maxLon]
   ];
-}
-
-function polygonToPath(bounds) {
-  const pts = buildPolygon(bounds).map((coord) => mercator(coord));
-  return pts
-    .map((pt, idx) => `${idx === 0 ? "M" : "L"}${pt[0].toFixed(2)},${pt[1].toFixed(2)}`)
-    .join(" ") + " Z";
 }
 
 function loadThemes() {
@@ -273,69 +254,54 @@ function selectTheme(key) {
   updateInsights();
 }
 
-function createSvg() {
-  const container = document.getElementById("map");
-  container.innerHTML = "";
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("viewBox", `0 0 ${state.width} ${state.height}`);
-  const ocean = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-  ocean.setAttribute("x", 0);
-  ocean.setAttribute("y", 0);
-  ocean.setAttribute("width", state.width);
-  ocean.setAttribute("height", state.height);
-  ocean.setAttribute("fill", "url(#ocean)");
-  const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
-  const gradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
-  gradient.setAttribute("id", "ocean");
-  gradient.setAttribute("x1", "0%");
-  gradient.setAttribute("x2", "0%");
-  gradient.setAttribute("y1", "0%");
-  gradient.setAttribute("y2", "100%");
-  const stop1 = document.createElementNS("http://www.w3.org/2000/svg", "stop");
-  stop1.setAttribute("offset", "0%");
-  stop1.setAttribute("stop-color", "#0f2348");
-  const stop2 = document.createElementNS("http://www.w3.org/2000/svg", "stop");
-  stop2.setAttribute("offset", "100%");
-  stop2.setAttribute("stop-color", "#0b132b");
-  gradient.appendChild(stop1);
-  gradient.appendChild(stop2);
-  defs.appendChild(gradient);
-  svg.appendChild(defs);
-  svg.appendChild(ocean);
-
-  COUNTRY_SHAPES.forEach((country) => {
-    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    path.setAttribute("d", polygonToPath(country.bounds));
-    path.setAttribute("data-id", country.id);
-    path.setAttribute("data-name", country.name);
-    path.classList.add("country");
-    svg.appendChild(path);
-  });
-
-  container.appendChild(svg);
-  attachCountryEvents();
-  refreshColors();
+function hideTooltip() {
+  document.getElementById("tooltip").classList.remove("visible");
 }
 
-function attachCountryEvents() {
+function showTooltipForCountry(id, event) {
   const tooltip = document.getElementById("tooltip");
-  const svg = document.querySelector("svg");
-  svg.querySelectorAll(".country").forEach((path) => {
-    path.addEventListener("mousemove", (e) => {
-      const id = path.dataset.id;
-      const theme = state.themes[state.currentTheme];
-      const content = buildTooltipContent(id, theme);
-      if (!content) {
-        tooltip.classList.remove("visible");
-        return;
-      }
-      tooltip.innerHTML = content;
-      tooltip.style.left = `${e.offsetX + 16}px`;
-      tooltip.style.top = `${e.offsetY + 16}px`;
-      tooltip.classList.add("visible");
+  const theme = state.themes[state.currentTheme];
+  const content = buildTooltipContent(id, theme);
+  if (!content) {
+    hideTooltip();
+    return;
+  }
+
+  const point = event.containerPoint;
+  tooltip.innerHTML = content;
+  tooltip.style.left = `${point.x + 16}px`;
+  tooltip.style.top = `${point.y + 16}px`;
+  tooltip.classList.add("visible");
+}
+
+function createMap() {
+  const container = document.getElementById("map");
+  container.innerHTML = "";
+  state.map = L.map(container, { worldCopyJump: true });
+
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 6,
+    minZoom: 2,
+    attribution: "© OpenStreetMap contributeurs"
+  }).addTo(state.map);
+
+  const bounds = L.latLngBounds([]);
+  COUNTRY_SHAPES.forEach((country) => {
+    const rectangle = L.rectangle(boundsToLatLng(country.bounds), {
+      color: "#cbd5e1",
+      weight: 1,
+      fillColor: "#e6edf7",
+      fillOpacity: 1
     });
-    path.addEventListener("mouseleave", () => tooltip.classList.remove("visible"));
+    rectangle.addTo(state.map);
+    rectangle.on("mousemove", (e) => showTooltipForCountry(country.id, e));
+    rectangle.on("mouseout", hideTooltip);
+    state.countryLayers[country.id] = rectangle;
+    bounds.extend(boundsToLatLng(country.bounds));
   });
+
+  state.map.fitBounds(bounds, { padding: [20, 20] });
+  refreshColors();
 }
 
 function colorForCountry(id, theme) {
@@ -363,10 +329,15 @@ function colorForCountry(id, theme) {
 
 function refreshColors() {
   const theme = state.themes[state.currentTheme];
-  document.querySelectorAll(".country").forEach((path) => {
-    const id = path.dataset.id;
-    path.setAttribute("fill", colorForCountry(id, theme));
-    path.style.opacity = theme.data[id] ? 1 : 0.35;
+  Object.entries(state.countryLayers).forEach(([id, layer]) => {
+    const fill = colorForCountry(id, theme);
+    const hasData = theme.data[id] !== undefined;
+    layer.setStyle({
+      fillColor: fill,
+      fillOpacity: hasData ? 1 : 0.35,
+      color: "#cbd5e1",
+      weight: 1
+    });
   });
 }
 
@@ -495,7 +466,7 @@ function updateInsights() {
 
 function refreshMap() {
   refreshColors();
-  document.getElementById("tooltip").classList.remove("visible");
+  hideTooltip();
 }
 
 function setupBurger() {
@@ -618,7 +589,7 @@ function setupBackOffice() {
 
 function init() {
   buildMenu();
-  createSvg();
+  createMap();
   buildLegend();
   updateInsights();
   setupBurger();
