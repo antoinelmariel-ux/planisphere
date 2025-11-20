@@ -1,5 +1,189 @@
-const APP_VERSION = "0.4.6";
+const APP_VERSION = "0.4.7";
 const WORLD_SVG_PATH = "assets/world.svg";
+const CORRUPTION_INDEX_PATH = "assets/ICP2024.json";
+
+const ISO3_TO_ISO2 = {
+  AFG: "AF",
+  AGO: "AO",
+  ALB: "AL",
+  ARE: "AE",
+  ARG: "AR",
+  ARM: "AM",
+  AUS: "AU",
+  AUT: "AT",
+  AZE: "AZ",
+  BDI: "BI",
+  BEL: "BE",
+  BEN: "BJ",
+  BFA: "BF",
+  BGD: "BD",
+  BGR: "BG",
+  BHR: "BH",
+  BHS: "BS",
+  BIH: "BA",
+  BLR: "BY",
+  BOL: "BO",
+  BRA: "BR",
+  BRB: "BB",
+  BTN: "BT",
+  BWA: "BW",
+  CAF: "CF",
+  CAN: "CA",
+  CHE: "CH",
+  CHL: "CL",
+  CHN: "CN",
+  CIV: "CI",
+  CMR: "CM",
+  COG: "CG",
+  COD: "CD",
+  COL: "CO",
+  COM: "KM",
+  CPV: "CV",
+  CRI: "CR",
+  CUB: "CU",
+  CYP: "CY",
+  CZE: "CZ",
+  DEU: "DE",
+  DJI: "DJ",
+  DMA: "DM",
+  DNK: "DK",
+  DOM: "DO",
+  DZA: "DZ",
+  ECU: "EC",
+  EGY: "EG",
+  ERI: "ER",
+  ESP: "ES",
+  EST: "EE",
+  ETH: "ET",
+  FJI: "FJ",
+  FIN: "FI",
+  FRA: "FR",
+  GAB: "GA",
+  GBR: "GB",
+  GEO: "GE",
+  GHA: "GH",
+  GIN: "GN",
+  GMB: "GM",
+  GNB: "GW",
+  GNQ: "GQ",
+  GRC: "GR",
+  GRD: "GD",
+  GTM: "GT",
+  GUY: "GY",
+  HKG: "HK",
+  HND: "HN",
+  HRV: "HR",
+  HTI: "HT",
+  HUN: "HU",
+  IDN: "ID",
+  IND: "IN",
+  IRL: "IE",
+  IRN: "IR",
+  IRQ: "IQ",
+  ISL: "IS",
+  ISR: "IL",
+  ITA: "IT",
+  JAM: "JM",
+  JOR: "JO",
+  JPN: "JP",
+  KAZ: "KZ",
+  KEN: "KE",
+  KGZ: "KG",
+  KHM: "KH",
+  KOR: "KR",
+  KSV: "XK",
+  KWT: "KW",
+  LAO: "LA",
+  LBN: "LB",
+  LBR: "LR",
+  LBY: "LY",
+  LCA: "LC",
+  LKA: "LK",
+  LSO: "LS",
+  LTU: "LT",
+  LUX: "LU",
+  LVA: "LV",
+  MAR: "MA",
+  MDA: "MD",
+  MDG: "MG",
+  MDV: "MV",
+  MEX: "MX",
+  MKD: "MK",
+  MLI: "ML",
+  MLT: "MT",
+  MMR: "MM",
+  MNE: "ME",
+  MNG: "MN",
+  MOZ: "MZ",
+  MRT: "MR",
+  MUS: "MU",
+  MWI: "MW",
+  MYS: "MY",
+  NAM: "NA",
+  NER: "NE",
+  NGA: "NG",
+  NIC: "NI",
+  NLD: "NL",
+  NOR: "NO",
+  NPL: "NP",
+  NZL: "NZ",
+  OMN: "OM",
+  PAK: "PK",
+  PAN: "PA",
+  PER: "PE",
+  PHL: "PH",
+  PNG: "PG",
+  POL: "PL",
+  PRT: "PT",
+  PRK: "KP",
+  PRY: "PY",
+  QAT: "QA",
+  ROU: "RO",
+  RUS: "RU",
+  RWA: "RW",
+  SAU: "SA",
+  SEN: "SN",
+  SGP: "SG",
+  SLB: "SB",
+  SLE: "SL",
+  SLV: "SV",
+  SOM: "SO",
+  STP: "ST",
+  SSD: "SS",
+  SDN: "SD",
+  SRB: "RS",
+  SUR: "SR",
+  SVK: "SK",
+  SVN: "SI",
+  SWE: "SE",
+  SWZ: "SZ",
+  SYC: "SC",
+  SYR: "SY",
+  TCD: "TD",
+  TGO: "TG",
+  THA: "TH",
+  TJK: "TJ",
+  TKM: "TM",
+  TLS: "TL",
+  TTO: "TT",
+  TUN: "TN",
+  TUR: "TR",
+  TWN: "TW",
+  TZA: "TZ",
+  UGA: "UG",
+  UKR: "UA",
+  URY: "UY",
+  USA: "US",
+  UZB: "UZ",
+  VCT: "VC",
+  VEN: "VE",
+  VNM: "VN",
+  VUT: "VU",
+  YEM: "YE",
+  ZAF: "ZA",
+  ZMB: "ZM",
+  ZWE: "ZW"
+};
 const DEFAULT_MEDICINES = [
   "Antibiotiques",
   "Antalgiques",
@@ -414,28 +598,7 @@ const DEFAULT_THEMES = {
     palette: ["#a8f0ff", "#ffd072", "#ff6b6b"],
     domain: [0, 100],
     description: "Indice Transparency International (0 = fort risque, 100 = risque faible).",
-    data: {
-      CA: 74,
-      FR: 72,
-      DE: 79,
-      US: 69,
-      GB: 73,
-      ES: 60,
-      BR: 38,
-      AR: 37,
-      NG: 24,
-      ZA: 43,
-      IN: 40,
-      CN: 45,
-      JP: 73,
-      AU: 75,
-      MX: 31,
-      TR: 36,
-      AE: 68,
-      MA: 38,
-      EG: 29,
-      KR: 63
-    }
+    data: {}
   },
   revenueShare: {
     label: "% du chiffre d'affaires du Groupe",
@@ -624,6 +787,38 @@ function persistThemes() {
     localStorage.setItem("complianceThemes", JSON.stringify(state.themes));
   } catch (error) {
     console.warn("Impossible de sauvegarder", error);
+  }
+}
+
+function buildCorruptionIndexMap(entries) {
+  const values = {};
+  entries.forEach((entry) => {
+    const iso3 = entry.ISO3;
+    const iso2 = ISO3_TO_ISO2[iso3];
+    const score = Number(entry["CPI 2024 score"]);
+    if (!iso2) {
+      console.warn(`Code ISO3 inconnu : ${iso3}`);
+      return;
+    }
+    if (!Number.isFinite(score)) return;
+    values[iso2] = score;
+  });
+  return values;
+}
+
+async function refreshCorruptionIndexData() {
+  try {
+    const response = await fetch(CORRUPTION_INDEX_PATH);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const entries = await response.json();
+    const corruptionIndex = buildCorruptionIndexMap(entries);
+    if (!Object.keys(corruptionIndex).length) return;
+    state.themes.corruptionIndex.data = corruptionIndex;
+    persistThemes();
+    refreshColors();
+    buildLegend();
+  } catch (error) {
+    console.error("Impossible de mettre à jour l'indice de corruption", error);
   }
 }
 
@@ -2240,9 +2435,10 @@ function setupZoomControls() {
   }
 }
 
-function init() {
+async function init() {
   buildMenu();
-  createMap();
+  await refreshCorruptionIndexData();
+  await createMap();
   buildLegend();
   setupBurger();
   buildBackOffice();
