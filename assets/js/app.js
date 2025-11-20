@@ -1,4 +1,4 @@
-const APP_VERSION = "0.4.7";
+const APP_VERSION = "0.4.8";
 const WORLD_SVG_PATH = "assets/world.svg";
 const CORRUPTION_INDEX_PATH = "assets/ICP2024.json";
 
@@ -698,7 +698,7 @@ const DEFAULT_THEMES = {
 };
 
 const VIEWBOX_FALLBACK = "0 0 2000 857";
-const EUROPE_VIEWBOX = "860 0 360 420";
+const EUROPE_VIEWBOX = "780 20 300 340";
 
 const state = {
   currentTheme: "countryProfile",
