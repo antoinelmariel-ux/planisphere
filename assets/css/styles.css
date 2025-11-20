@@ -364,13 +364,6 @@ main {
   display: grid;
 }
 
-.config-grid {
-  display: grid;
-  grid-template-columns: 320px 1fr;
-  gap: 16px;
-  align-items: start;
-}
-
 .config-detail {
   display: grid;
   gap: 16px;
@@ -380,28 +373,6 @@ main {
   width: 100%;
   display: grid;
   gap: 16px;
-}
-
-.entity-sidebar {
-  border: 1px solid var(--stroke);
-  border-radius: var(--radius);
-  background: #ffffff;
-  padding: 14px;
-  box-shadow: var(--shadow);
-  display: grid;
-  gap: 12px;
-}
-
-.entity-sidebar__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.entity-sidebar__controls {
-  display: grid;
-  gap: 8px;
 }
 
 .back-office__section {
@@ -1143,7 +1114,4 @@ textarea {
     max-height: calc(100vh - 104px);
   }
 
-  .config-grid {
-    grid-template-columns: 1fr;
-  }
 }

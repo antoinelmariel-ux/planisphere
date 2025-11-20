@@ -1,4 +1,4 @@
-const APP_VERSION = "0.12.0";
+const APP_VERSION = "0.13.0";
 const WORLD_SVG_PATH = "assets/world.svg";
 const CORRUPTION_INDEX_PATH = "assets/ICP2024.json";
 
@@ -2146,6 +2146,11 @@ function renderDynamicFields() {
   setFormActionsVisibility(false);
   closeModal();
 
+  if (themeKey !== "countryProfile") {
+    state.selectedEntityId = null;
+    updateDeleteButtonState();
+  }
+
   if (!theme) {
     const empty = document.createElement("p");
     empty.className = "helper";
@@ -2216,7 +2221,6 @@ function renderDynamicFields() {
       buildCreationButton("Créer l'entité", () => {
         state.selectedEntityId = null;
         resetCountryProfileForm();
-        renderEntitySidebar();
         const field = document.getElementById("field-entityName");
         field?.focus();
       })
@@ -2227,8 +2231,7 @@ function renderDynamicFields() {
     buildPriorityChoices();
     setupActivityToggles();
     setupEntityRevenuePreview();
-    setupEntitySidebar();
-    renderEntitySidebar();
+    bindEntityDeleteAction();
     populateSelectedEntity();
     const hasEntities = Object.keys(theme.data || {}).length > 0;
     const shouldShowForm = !!state.selectedEntityId || !hasEntities;
@@ -2238,9 +2241,16 @@ function renderDynamicFields() {
     const creationPanel = document.createElement("div");
     creationPanel.id = "creationPanel";
     creationPanel.className = "creation-panel";
-    if (theme.allowCustomLegend) {
-      creationPanel.appendChild(buildLegendEditor(themeKey, theme));
-    }
+    creationPanel.dataset.currentList = "";
+    const listFields = document.createElement("div");
+    listFields.className = "inline-fields";
+    listFields.innerHTML = `
+      <label>Nom de la liste<input id="field-category" type="text" placeholder="Liste d'embargo" /></label>
+      <label>Couleur<input id="field-categoryColor" type="color" value="${getNextLegendColor(
+      theme
+    )}" /></label>
+    `;
+    creationPanel.appendChild(listFields);
     const picker = document.createElement("div");
     picker.className = "country-chip-selector";
     picker.innerHTML = `
@@ -2250,15 +2260,21 @@ function renderDynamicFields() {
       <div id="countryTags" class="tag-container" aria-live="polite"></div>
     `;
     creationPanel.appendChild(picker);
-    const categoryField = buildCategoryField(themeKey, theme);
-    creationPanel.appendChild(categoryField);
     dynamic.appendChild(buildEmbargoSummary());
     dynamic.appendChild(
       buildCreationButton("Créer une liste d'embargo", () => {
+        creationPanel.dataset.currentList = "";
+        const nameInput = document.getElementById("field-category");
+        if (nameInput) {
+          nameInput.value = "";
+        }
+        document.getElementById("field-category")?.focus();
+        const colorInput = document.getElementById("field-categoryColor");
+        if (colorInput) {
+          colorInput.value = getNextLegendColor(theme);
+        }
         setCountrySelection([]);
         showCreationPanel();
-        const search = document.getElementById("countrySearch");
-        search?.focus();
       })
     );
     attachCreationPanel(creationPanel, "Créer une liste d'embargo");
@@ -2320,9 +2336,6 @@ function renderDynamicFields() {
     setFormActionsVisibility(true);
   }
 
-  if (themeKey !== "countryProfile") {
-    renderEntitySidebar();
-  }
 }
 
 function buildCountryProfileList() {
@@ -2376,7 +2389,6 @@ function buildCountryProfileList() {
     editButton.addEventListener("click", () => {
       state.selectedEntityId = countryId;
       showCreationPanel();
-      renderEntitySidebar();
       populateCountryProfileForm(countryId, profile);
     });
 
@@ -2412,6 +2424,14 @@ function updateDeleteButtonState() {
   deleteButton.disabled = !isVisible;
 }
 
+function bindEntityDeleteAction() {
+  const deleteButton = document.getElementById("deleteEntity");
+  if (deleteButton && !deleteButton.dataset.bound) {
+    deleteButton.addEventListener("click", deleteSelectedEntity);
+    deleteButton.dataset.bound = "true";
+  }
+}
+
 function populateSelectedEntity() {
   if (state.currentTheme !== "countryProfile") {
     updateDeleteButtonState();
@@ -2426,15 +2446,6 @@ function populateSelectedEntity() {
   updateDeleteButtonState();
 }
 
-function selectEntity(countryId) {
-  state.selectedEntityId = countryId || null;
-  renderEntitySidebar();
-  populateSelectedEntity();
-  if (countryId) {
-    showCreationPanel();
-  }
-}
-
 function deleteSelectedEntity() {
   if (state.currentTheme !== "countryProfile" || !state.selectedEntityId) return;
   const theme = state.themes?.countryProfile;
@@ -2447,131 +2458,9 @@ function deleteSelectedEntity() {
   state.themes = { ...state.themes, countryProfile: { ...theme, data: { ...theme.data } } };
   persistThemes();
   state.selectedEntityId = null;
-  renderEntitySidebar();
   populateSelectedEntity();
   refreshMap();
   buildLegend();
-}
-
-function getFilteredEntities() {
-  const searchValue = (document.getElementById("entitySearch")?.value || "")
-    .trim()
-    .toLowerCase();
-  const typeFilter = document.getElementById("entityTypeFilter")?.value || "all";
-  const entries = Object.entries(state.themes?.countryProfile?.data || {}).sort((a, b) =>
-    getProfileEntityKey(a[1]).localeCompare(getProfileEntityKey(b[1]))
-  );
-
-  return entries.filter(([countryId, profile]) => {
-    const matchesType = typeFilter === "all" || profile?.entityType === typeFilter;
-    if (!matchesType) return false;
-    if (!searchValue) return true;
-    const country = COUNTRIES.find((c) => c.id === countryId);
-    const haystack = `${getProfileEntityKey(profile)} ${country?.name || ""} ${countryId}`.toLowerCase();
-    return haystack.includes(searchValue);
-  });
-}
-
-function renderEntitySidebar() {
-  const sidebar = document.getElementById("entitySidebar");
-  if (!sidebar) return;
-  const list = document.getElementById("entityList");
-  const isVisible = state.currentTheme === "countryProfile";
-  sidebar.style.display = isVisible ? "" : "none";
-  sidebar.setAttribute("aria-hidden", isVisible ? "false" : "true");
-  if (!isVisible || !list) {
-    updateDeleteButtonState();
-    return;
-  }
-
-  const filtered = getFilteredEntities();
-  list.innerHTML = "";
-
-  if (!filtered.length) {
-    state.selectedEntityId = null;
-    resetCountryProfileForm();
-    setCreationPanelVisibility(document.getElementById("creationPanel"), true);
-    setFormActionsVisibility(true);
-    const empty = document.createElement("p");
-    empty.className = "entity-list__empty";
-    empty.textContent = "Aucune entité trouvée.";
-    list.appendChild(empty);
-    updateDeleteButtonState();
-    return;
-  }
-
-  const hasSelection = filtered.some(([countryId]) => countryId === state.selectedEntityId);
-  if (!hasSelection) {
-    state.selectedEntityId = null;
-  }
-
-  if (state.currentTheme === "countryProfile") {
-    const creationPanel = document.getElementById("creationPanel");
-    const shouldShowForm = !!state.selectedEntityId || !filtered.length;
-    setCreationPanelVisibility(creationPanel, shouldShowForm);
-    setFormActionsVisibility(shouldShowForm);
-  }
-
-  filtered.forEach(([countryId, profile]) => {
-    const row = document.createElement("button");
-    row.type = "button";
-    row.className = "entity-list__row";
-    row.classList.toggle("is-active", state.selectedEntityId === countryId);
-
-    const title = document.createElement("strong");
-    title.textContent = profile?.entityName || "(Sans nom)";
-
-    const meta = document.createElement("div");
-    meta.className = "entity-list__meta";
-    const country = COUNTRIES.find((c) => c.id === countryId);
-    const entityTypeLabel = profile?.entityType === "distributor" ? "Distributeur" : "Filiale / JV";
-    const revenue = formatRevenue(extractRevenueValue(profile, countryId), getProfileCurrency(profile));
-
-    const location = document.createElement("span");
-    location.textContent = `${entityTypeLabel} · ${country?.name || countryId}`;
-    const revenueLabel = document.createElement("span");
-    revenueLabel.textContent = revenue;
-
-    meta.appendChild(location);
-    meta.appendChild(revenueLabel);
-
-    row.appendChild(title);
-    row.appendChild(meta);
-    row.addEventListener("click", () => selectEntity(countryId));
-    list.appendChild(row);
-  });
-
-  updateDeleteButtonState();
-}
-
-function setupEntitySidebar() {
-  const search = document.getElementById("entitySearch");
-  if (search && !search.dataset.bound) {
-    search.addEventListener("input", renderEntitySidebar);
-    search.dataset.bound = "true";
-  }
-  const filter = document.getElementById("entityTypeFilter");
-  if (filter && !filter.dataset.bound) {
-    filter.addEventListener("change", renderEntitySidebar);
-    filter.dataset.bound = "true";
-  }
-  const newEntityButton = document.getElementById("newEntityButton");
-  if (newEntityButton && !newEntityButton.dataset.bound) {
-    newEntityButton.addEventListener("click", () => {
-      state.selectedEntityId = null;
-      resetCountryProfileForm();
-      renderEntitySidebar();
-      showCreationPanel();
-      const field = document.getElementById("field-entityName");
-      field?.focus();
-    });
-    newEntityButton.dataset.bound = "true";
-  }
-  const deleteButton = document.getElementById("deleteEntity");
-  if (deleteButton && !deleteButton.dataset.bound) {
-    deleteButton.addEventListener("click", deleteSelectedEntity);
-    deleteButton.dataset.bound = "true";
-  }
 }
 
 function buildEmbargoSummary() {
@@ -2623,9 +2512,18 @@ function buildEmbargoSummary() {
     editButton.textContent = "Modifier";
     editButton.addEventListener("click", () => {
       showCreationPanel();
-      const select = document.getElementById("field-category");
-      if (select) {
-        select.value = listName;
+      const nameInput = document.getElementById("field-category");
+      const colorInput = document.getElementById("field-categoryColor");
+      const creationPanel = document.getElementById("creationPanel");
+      if (creationPanel) {
+        creationPanel.dataset.currentList = listName;
+      }
+      if (nameInput) {
+        nameInput.value = listName;
+      }
+      if (colorInput) {
+        const currentColor = state.themes?.embargo?.legend?.[listName];
+        colorInput.value = currentColor || getNextLegendColor(state.themes.embargo);
       }
       setCountrySelection(countries);
       const backOffice = document.getElementById("backOffice");
@@ -3166,6 +3064,40 @@ function handleBackOfficeSubmit(e) {
       };
     });
     state.selectedEntityId = selectedCountries[0];
+  } else if (themeKey === "embargo") {
+    const selectedCountries = getSelectedCountries();
+    if (!selectedCountries.length) {
+      return handleSaveError("Merci de sélectionner au moins un pays");
+    }
+    const nameInput = document.getElementById("field-category");
+    const colorInput = document.getElementById("field-categoryColor");
+    if (!nameInput) {
+      return handleSaveError("Merci de renseigner le nom de la liste");
+    }
+    const category = nameInput.value.trim();
+    if (!category) {
+      return handleSaveError("Merci de renseigner le nom de la liste");
+    }
+    const color = colorInput?.value || getNextLegendColor(theme);
+    const creationPanel = document.getElementById("creationPanel");
+    const previousLabel = creationPanel?.dataset.currentList || category;
+    const legend = { ...(theme.legend || {}) };
+
+    if (previousLabel && previousLabel !== category) {
+      Object.entries(theme.data).forEach(([countryId, value]) => {
+        if (value === previousLabel) {
+          theme.data[countryId] = category;
+        }
+      });
+      delete legend[previousLabel];
+    }
+
+    legend[category] = color;
+    theme.legend = legend;
+
+    selectedCountries.forEach((countryId) => {
+      theme.data[countryId] = category;
+    });
   } else if (themeKey === "corruptionIndex") {
     const inputs = document.querySelectorAll("#corruptionTable input[data-country]");
     const corruptionData = {};
