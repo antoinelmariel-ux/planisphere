@@ -1,4 +1,4 @@
-const APP_VERSION = "0.4.7";
+const APP_VERSION = "0.5.0";
 const WORLD_SVG_PATH = "assets/world.svg";
 const CORRUPTION_INDEX_PATH = "assets/ICP2024.json";
 
@@ -461,248 +461,17 @@ const CONTINENTS = [
   )
 }));
 
-const DEFAULT_THEMES = {
+const DEFAULT_THEMES = {};
 
-  countryProfile: {
-    label: "Fiche Entitée",
-    mode: "tooltip",
-    color: "#ff9f3f",
-    description: "Carte des fiches pays avec les données sociales, business et compliance.",
-    data: {
-      FR: {
-        entityName: "Groupe Europe Ouest",
-        employees: 1200,
-        countryRevenue: 820,
-        revenueCurrency: "M€",
-        activity: "Siège, promotion et collecte",
-        country: "France",
-        complianceLead: "Jeanne Durand (Sponsor : CFO Groupe)",
-        legal: "Protection données, anti-corruption, concurrence"
-      },
-      US: {
-        entityName: "Digital Americas",
-        employees: 480,
-        countryRevenue: 410,
-        revenueCurrency: "M$",
-        activity: "Collecte et distribution digitale",
-        country: "États-Unis",
-        complianceLead: "Elena Walsh (Sponsor : CEO US)",
-        legal: "FCPA, privacy state laws, export control"
-      },
-      BR: {
-        entityName: "LatAm Sud",
-        employees: 220,
-        countryRevenue: 125,
-        revenueCurrency: "M$",
-        activity: "Promotion et collecte",
-        country: "Brésil",
-        complianceLead: "Paulo Mendes (Sponsor : COO LatAm)",
-        legal: "LGPD, anti-corruption, concurrence"
-      },
-      NG: {
-        entityName: "Africa Growth",
-        employees: 160,
-        countryRevenue: 65,
-        revenueCurrency: "M$",
-        activity: "Collecte et distribution locale",
-        country: "Nigéria",
-        complianceLead: "Adaeze Okafor (Sponsor : Area Manager 2)",
-        legal: "Donnees, sanctions locales, diligence tiers"
-      },
-      IN: {
-        entityName: "APAC Tech",
-        employees: 350,
-        countryRevenue: 190,
-        revenueCurrency: "M$",
-        activity: "Promotion & collecte",
-        country: "Inde",
-        complianceLead: "Amit Sharma (Sponsor : CTO Groupe)",
-        legal: "IT Rules, prévention fraude, concurrence"
-      },
-      CA: {
-        entityName: "Digital Americas",
-        employees: 260,
-        countryRevenue: 220,
-        revenueCurrency: "M$",
-        activity: "Distribution et support régional",
-        country: "Canada",
-        complianceLead: "Sophie Tremblay (Sponsor : CRO Amériques)",
-        legal: "LPRPDE, lutte anticorruption, obligations export"
-      },
-      DE: {
-        entityName: "Groupe Europe Ouest",
-        employees: 310,
-        countryRevenue: 275,
-        revenueCurrency: "M€",
-        activity: "Promotion et opérations industrielles",
-        country: "Allemagne",
-        complianceLead: "Karl Hoffmann (Sponsor : COO Europe)",
-        legal: "BAFA export control, concurrence, RGPD"
-      },
-      ES: {
-        entityName: "Europe Sud",
-        employees: 140,
-        countryRevenue: 95,
-        revenueCurrency: "M€",
-        activity: "Promotion & collecte",
-        country: "Espagne",
-        complianceLead: "Lucía Ramos (Sponsor : Directeur Europe Sud)",
-        legal: "RGPD, Sapin II local, obligations CNMC"
-      },
-      AE: {
-        entityName: "Middle East Hub",
-        employees: 120,
-        countryRevenue: 70,
-        revenueCurrency: "M$",
-        activity: "Hub régional et support partenaires",
-        country: "Émirats arabes unis",
-        complianceLead: "Yara Al Nahyan (Sponsor : Area Manager 2)",
-        legal: "Lutte anti-blanchiment, obligations Emirats, données sensibles"
-      },
-      AU: {
-        entityName: "APAC Tech",
-        employees: 150,
-        countryRevenue: 110,
-        revenueCurrency: "M$",
-        activity: "Distribution, support et R&D locale",
-        country: "Australie",
-        complianceLead: "Oliver Grant (Sponsor : CTO APAC)",
-        legal: "Privacy Act, lois anticorruption, sécurité produits"
-      }
-    }
-  },
-  embargoLists: {
-    label: "Pays sous embargo",
-    mode: "category",
-    allowCustomLegend: true,
-    description:
-      "Cartographie des listes d'embargo (ONU, UE, OFAC...) avec couleurs personnalisables.",
-    legend: {
-      "Sanctions complètes": "#ef4444",
-      "Restriction partielle": "#f97316",
-      "Surveillance renforcée": "#6366f1"
-    },
-    data: {
-      RU: "Sanctions complètes",
-      IR: "Sanctions complètes",
-      KP: "Sanctions complètes",
-      SY: "Restriction partielle",
-      CU: "Restriction partielle",
-      BY: "Surveillance renforcée",
-      VE: "Surveillance renforcée"
-    }
-  },
-  corruptionIndex: {
-    label: "Indice de corruption",
-    mode: "numeric",
-    palette: ["#a8f0ff", "#ffd072", "#ff6b6b"],
-    domain: [0, 100],
-    description: "Indice Transparency International (0 = fort risque, 100 = risque faible).",
-    data: {}
-  },
-  revenueShare: {
-    label: "% du chiffre d'affaires du Groupe",
-    mode: "numeric",
-    palette: ["#d6f5ff", "#64d4ff", "#0b95ff"],
-    domain: [0, 20],
-    description: "Répartition du chiffre d'affaires consolidé.",
-    data: {
-      FR: 18,
-      US: 14,
-      DE: 8,
-      GB: 6,
-      IN: 5,
-      BR: 4,
-      AU: 4,
-      CN: 6,
-      NG: 2,
-      AE: 3,
-      JP: 3,
-      MX: 2,
-      CA: 5,
-      ES: 3,
-      IT: 2
-    }
-  },
-  subsidiaryType: {
-    label: "Type de filiale",
-    mode: "category",
-    description: "Typologie juridique ou opérationnelle de la filiale.",
-    legend: {
-      Collecte: "#5ad487",
-      Promotion: "#ff9f3f",
-      "Promotion & Collecte": "#7f8cff",
-      Distributeur: "#ffd66b"
-    },
-    data: {
-      FR: "Promotion & Collecte",
-      US: "Collecte",
-      DE: "Promotion",
-      GB: "Promotion",
-      BR: "Promotion & Collecte",
-      NG: "Collecte",
-      AE: "Distributeur",
-      AU: "Distributeur",
-      IN: "Promotion & Collecte",
-      JP: "Promotion",
-      ES: "Promotion",
-      TR: "Collecte",
-      MA: "Promotion",
-      CA: "Promotion & Collecte"
-    }
-  },
-  products: {
-    label: "Produits vendus",
-    mode: "tooltip",
-    color: "#64d4ff",
-    description: "Portefeuille produits par marché (multi-produits autorisés).",
-    data: {
-      FR: { products: ["Suite data", "API open compliance", "Monitoring IA"] },
-      US: { products: ["Suite data", "Monitoring IA"] },
-      DE: { products: ["API open compliance", "Tableaux M&A"] },
-      GB: { products: ["Suite data", "Screening tiers"] },
-      NG: { products: ["Screening tiers", "KYC mobile"] },
-      IN: { products: ["Suite data", "KYC mobile", "Monitoring IA"] },
-      BR: { products: ["Suite data", "Screening tiers"] },
-      ES: { products: ["API open compliance", "Monitoring IA"] },
-      CA: { products: ["Suite data", "Tableaux M&A"] },
-      AU: { products: ["Screening tiers", "KYC mobile"] }
-    }
-  },
-  areaManager: {
-    label: "Zones Area Manager",
-    mode: "category",
-    description: "Répartition des zones de responsabilité.",
-    legend: {
-      "Area Manager 1": "#64d4ff",
-      "Area Manager 2": "#ff9f3f",
-      "Area Manager 3": "#7f8cff"
-    },
-    data: {
-      FR: "Area Manager 1",
-      GB: "Area Manager 1",
-      DE: "Area Manager 1",
-      CA: "Area Manager 1",
-      US: "Area Manager 2",
-      MX: "Area Manager 2",
-      BR: "Area Manager 2",
-      NG: "Area Manager 2",
-      ES: "Area Manager 2",
-      AE: "Area Manager 2",
-      IN: "Area Manager 3",
-      CN: "Area Manager 3",
-      JP: "Area Manager 3",
-      AU: "Area Manager 3"
-    }
-  }
-};
+const initialThemes = loadThemes();
+const initialThemeKey = Object.keys(initialThemes)[0] || null;
 
 const VIEWBOX_FALLBACK = "0 0 2000 857";
 const EUROPE_VIEWBOX = "860 0 360 420";
 
 const state = {
-  currentTheme: "countryProfile",
-  themes: loadThemes(),
+  currentTheme: initialThemeKey,
+  themes: initialThemes,
   medicines: loadMedicines(),
   priorities: loadPriorities(),
   countrySelector: loadCountrySelectorState(),
@@ -772,12 +541,9 @@ function normalizeThemeCountries(themes) {
 
 function loadThemes() {
   try {
-    const cached = localStorage.getItem("complianceThemes");
-    if (cached) {
-      return normalizeThemeCountries(JSON.parse(cached));
-    }
+    localStorage.removeItem("complianceThemes");
   } catch (error) {
-    console.warn("Impossible de charger le cache", error);
+    console.warn("Impossible de réinitialiser les thématiques", error);
   }
   return normalizeThemeCountries(DEFAULT_THEMES);
 }
@@ -807,13 +573,15 @@ function buildCorruptionIndexMap(entries) {
 }
 
 async function refreshCorruptionIndexData() {
+  const corruptionTheme = state.themes?.corruptionIndex;
+  if (!corruptionTheme) return;
   try {
     const response = await fetch(CORRUPTION_INDEX_PATH);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const entries = await response.json();
     const corruptionIndex = buildCorruptionIndexMap(entries);
     if (!Object.keys(corruptionIndex).length) return;
-    state.themes.corruptionIndex.data = corruptionIndex;
+    corruptionTheme.data = corruptionIndex;
     persistThemes();
     refreshColors();
     buildLegend();
@@ -1008,9 +776,10 @@ function formatRevenue(value, currency = "M€") {
   return `${value.toLocaleString("fr-FR")} ${currency}`;
 }
 
-function sumEntityRevenue(entityName, data = state.themes.countryProfile.data) {
+function sumEntityRevenue(entityName, data) {
+  const source = data ?? state.themes?.countryProfile?.data ?? {};
   if (!entityName) return 0;
-  return Object.entries(data || {}).reduce((total, [countryId, profile]) => {
+  return Object.entries(source).reduce((total, [countryId, profile]) => {
     if (getProfileEntityKey(profile) !== entityName) return total;
     const revenue = extractRevenueValue(profile, countryId);
     return total + revenue;
@@ -1019,7 +788,7 @@ function sumEntityRevenue(entityName, data = state.themes.countryProfile.data) {
 
 function computeEntityProjection(entityName, countryRevenue, selectedCountries) {
   if (!entityName) return 0;
-  const data = state.themes.countryProfile.data || {};
+  const data = state.themes?.countryProfile?.data || {};
   let total = 0;
 
   Object.entries(data).forEach(([countryId, profile]) => {
@@ -1056,7 +825,15 @@ function setMenuOpen(isOpen) {
 function buildMenu() {
   const list = document.getElementById("themeList");
   list.innerHTML = "";
-  Object.entries(state.themes).forEach(([key, theme]) => {
+  const entries = Object.entries(state.themes);
+  if (!entries.length) {
+    const placeholder = document.createElement("li");
+    placeholder.className = "helper";
+    placeholder.textContent = "Aucune thématique disponible.";
+    list.appendChild(placeholder);
+    return;
+  }
+  entries.forEach(([key, theme]) => {
     const li = document.createElement("li");
     const btn = document.createElement("button");
     btn.textContent = theme.label;
@@ -1068,6 +845,17 @@ function buildMenu() {
 }
 
 function selectTheme(key) {
+  if (!key || !state.themes[key]) {
+    state.currentTheme = null;
+    document.querySelectorAll(".theme-menu button").forEach((btn) => {
+      btn.classList.remove("is-active");
+    });
+    setMenuOpen(false);
+    refreshMap();
+    buildLegend();
+    hideTooltip();
+    return;
+  }
   state.currentTheme = key;
   document.querySelectorAll(".theme-menu button").forEach((btn) =>
     btn.classList.toggle("is-active", btn.id === `btn-${key}`)
@@ -1084,6 +872,10 @@ function hideTooltip() {
 function showTooltipForCountry(id, event) {
   const tooltip = document.getElementById("tooltip");
   const theme = state.themes[state.currentTheme];
+  if (!theme) {
+    hideTooltip();
+    return;
+  }
   const content = buildTooltipContent(id, theme);
   if (!content) {
     hideTooltip();
@@ -1156,6 +948,7 @@ async function createMap() {
 }
 
 function colorForCountry(id, theme) {
+  if (!theme) return "#0d1f3a";
   const value = theme.data?.[id];
   if (value === undefined) return "#0d1f3a";
   if (theme.mode === "tooltip") {
@@ -1182,10 +975,10 @@ function refreshColors() {
   const theme = state.themes[state.currentTheme];
   Object.entries(state.countryLayers).forEach(([id, shapes]) => {
     const fill = colorForCountry(id, theme);
-    const hasData = theme.data[id] !== undefined;
+    const hasData = theme?.data?.[id] !== undefined;
     shapes.forEach((shape) => {
       shape.style.fill = fill;
-      shape.style.opacity = hasData ? 1 : 0.35;
+      shape.style.opacity = theme ? (hasData ? 1 : 0.35) : 0.2;
       shape.style.stroke = "#cbd5e1";
       shape.style.strokeWidth = 0.5;
     });
@@ -1196,6 +989,13 @@ function buildLegend() {
   const container = document.getElementById("legend");
   const theme = state.themes[state.currentTheme];
   container.innerHTML = "";
+  if (!theme) {
+    const message = document.createElement("p");
+    message.className = "helper";
+    message.textContent = "Aucune thématique disponible.";
+    container.appendChild(message);
+    return;
+  }
   if (theme.mode === "numeric") {
     const gradient = document.createElement("div");
     gradient.className = "gradient-bar";
@@ -1234,8 +1034,9 @@ function buildLegend() {
 }
 
 function buildTooltipContent(id, theme) {
+  if (!theme) return "";
   const country = COUNTRIES.find((c) => c.id === id);
-  const value = theme.data[id];
+  const value = theme.data?.[id];
   if (!value || !country) return "";
   if (theme === state.themes.countryProfile) {
     const currency = getProfileCurrency(value);
@@ -1327,6 +1128,33 @@ function setupBurger() {
 function buildBackOffice() {
   const themeSelect = document.getElementById("themeSelect");
   themeSelect.innerHTML = "";
+  const hasThemes = Object.keys(state.themes).length > 0;
+  if (!hasThemes) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "Aucune thématique disponible";
+    themeSelect.appendChild(option);
+    themeSelect.disabled = true;
+    const countrySelection = document.getElementById("countrySelection");
+    if (countrySelection) countrySelection.innerHTML = "";
+    const countryBadges = document.getElementById("countryBadges");
+    if (countryBadges) countryBadges.innerHTML = "";
+    const filterContainer = document.getElementById("continentFilters");
+    if (filterContainer) filterContainer.innerHTML = "";
+    const filterInput = document.getElementById("countryFilter");
+    if (filterInput) {
+      filterInput.value = "";
+      filterInput.disabled = true;
+    }
+    renderDynamicFields();
+    return;
+  }
+
+  themeSelect.disabled = false;
+  const filterInput = document.getElementById("countryFilter");
+  if (filterInput) {
+    filterInput.disabled = false;
+  }
   Object.entries(state.themes).forEach(([key, theme]) => {
     const option = document.createElement("option");
     option.value = key;
@@ -1336,6 +1164,7 @@ function buildBackOffice() {
 
   buildCountrySelector();
 
+  state.currentTheme = state.currentTheme ?? Object.keys(state.themes)[0];
   themeSelect.value = state.currentTheme;
   renderDynamicFields();
   themeSelect.addEventListener("change", renderDynamicFields);
@@ -2030,6 +1859,14 @@ function renderDynamicFields() {
   const dynamic = document.getElementById("dynamicFields");
   dynamic.innerHTML = "";
 
+  if (!theme) {
+    const empty = document.createElement("p");
+    empty.className = "helper";
+    empty.textContent = "Aucune thématique à configurer.";
+    dynamic.appendChild(empty);
+    return;
+  }
+
   if (themeKey === "countryProfile") {
     dynamic.innerHTML = `
       <label>Nom de l'entité<input id="field-entityName" type="text" /></label>
@@ -2218,6 +2055,11 @@ function handleBackOfficeSubmit(e) {
   const selectedCountries = getSelectedCountries();
   const theme = state.themes[themeKey];
 
+  if (!theme) {
+    alert("Aucune thématique disponible.");
+    return;
+  }
+
   if (!selectedCountries.length) {
     alert("Merci de sélectionner au moins un pays");
     return;
@@ -2401,6 +2243,7 @@ function setupBackOffice() {
   document.getElementById("backOfficeForm").addEventListener("submit", handleBackOfficeSubmit);
   document.getElementById("resetData").addEventListener("click", () => {
     state.themes = cloneThemes(DEFAULT_THEMES);
+    state.currentTheme = Object.keys(state.themes)[0] || null;
     state.medicines = [...DEFAULT_MEDICINES];
     state.priorities = [...DEFAULT_PRIORITIES];
     persistThemes();
