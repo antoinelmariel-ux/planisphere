@@ -1,4 +1,4 @@
-const APP_VERSION = "0.9.0";
+const APP_VERSION = "0.10.0";
 const WORLD_SVG_PATH = "assets/world.svg";
 const CORRUPTION_INDEX_PATH = "assets/ICP2024.json";
 
@@ -516,8 +516,12 @@ const state = {
   selectedEntityId: null,
   map: null,
   countryLayers: {},
-  defaultViewBox: VIEWBOX_FALLBACK
+  defaultViewBox: VIEWBOX_FALLBACK,
+  hasUnsavedChanges: false,
+  isSaving: false
 };
+
+let toastTimeout;
 
 const CATALOG_CONFIG = {
   medicine: {
@@ -543,6 +547,57 @@ const CATALOG_CONFIG = {
     }
   }
 };
+
+function showToast(message, type = "success") {
+  const toast = document.getElementById("toast");
+  if (!toast) return;
+  clearTimeout(toastTimeout);
+  toast.textContent = message;
+  toast.className = "toast";
+  toast.classList.add(`toast--${type}`, "is-visible");
+  toastTimeout = setTimeout(() => toast.classList.remove("is-visible"), 4000);
+}
+
+function updateUnsavedIndicator() {
+  const indicator = document.getElementById("unsavedIndicator");
+  if (!indicator) return;
+  const isDirty = !!state.hasUnsavedChanges;
+  indicator.classList.toggle("is-visible", isDirty);
+  indicator.textContent = isDirty
+    ? "Modifications non enregistrées"
+    : "Toutes les modifications sont enregistrées";
+}
+
+function setUnsavedChanges(value) {
+  state.hasUnsavedChanges = value;
+  updateUnsavedIndicator();
+}
+
+function setSavingState(isSaving) {
+  state.isSaving = isSaving;
+  const saveButton = document.getElementById("saveChanges");
+  if (saveButton) {
+    saveButton.disabled = isSaving;
+    saveButton.classList.toggle("is-loading", isSaving);
+  }
+}
+
+function setupChangeTracking() {
+  const form = document.getElementById("backOfficeForm");
+  if (!form) return;
+  const markDirty = () => {
+    if (!state.isSaving) {
+      setUnsavedChanges(true);
+    }
+  };
+  form.addEventListener("input", markDirty);
+  form.addEventListener("change", markDirty);
+}
+
+function handleSaveError(message) {
+  showToast(message, "error");
+  setSavingState(false);
+}
 
 function showResourceNotice(message) {
   const notice = document.getElementById("resourceNotice");
@@ -2887,21 +2942,20 @@ function readCountryRevenues() {
 }
 
 function handleBackOfficeSubmit(e) {
-  e.preventDefault();
+  e?.preventDefault?.();
+  setSavingState(true);
   const themeKey = document.getElementById("themeSelect").value;
   const theme = state.themes[themeKey];
 
   if (!theme) {
-    alert("Aucune thématique disponible.");
-    return;
+    return handleSaveError("Aucune thématique disponible.");
   }
 
   if (themeKey === "countryProfile") {
     const selectedCountries = getSelectedCountries();
 
     if (!selectedCountries.length) {
-      alert("Merci de sélectionner au moins un pays");
-      return;
+      return handleSaveError("Merci de sélectionner au moins un pays");
     }
 
     const entityName = document.getElementById("field-entityName").value.trim();
@@ -2938,25 +2992,21 @@ function handleBackOfficeSubmit(e) {
       : perCountryTotal || undefined;
 
     if (!entityName) {
-      alert("Merci de renseigner le nom de l'entité");
-      return;
+      return handleSaveError("Merci de renseigner le nom de l'entité");
     }
 
     if (entityType === "subsidiary" && !activities.length) {
-      alert("Merci de sélectionner au moins une activité");
-      return;
+      return handleSaveError("Merci de sélectionner au moins une activité");
     }
 
     if (entityType === "subsidiary" && isCommercial) {
       if (!Number.isFinite(globalRevenueRaw) && !perCountryTotal) {
-        alert("Merci de saisir un chiffre d'affaires (global ou par pays)");
-        return;
+        return handleSaveError("Merci de saisir un chiffre d'affaires (global ou par pays)");
       }
     }
 
     if (entityType === "distributor" && !Number.isFinite(globalRevenueRaw)) {
-      alert("Merci de renseigner le chiffre d'affaires du distributeur");
-      return;
+      return handleSaveError("Merci de renseigner le chiffre d'affaires du distributeur");
     }
 
     selectedCountries.forEach((countryId) => {
@@ -3012,12 +3062,11 @@ function handleBackOfficeSubmit(e) {
       assignments[country] = area;
     });
     if (conflicts.length) {
-      alert(
+      return handleSaveError(
         `Attention : ${conflicts
           .map((c) => COUNTRIES.find((item) => item.id === c)?.name || c)
           .join(", ")} est déjà attribué à un autre Area Manager.`
       );
-      return;
     }
     theme.data = assignments;
   } else if (themeKey === "prospecting") {
@@ -3035,19 +3084,19 @@ function handleBackOfficeSubmit(e) {
   } else if (theme.mode === "numeric") {
     const selectedCountries = getSelectedCountries();
     if (!selectedCountries.length) {
-      alert("Merci de sélectionner au moins un pays");
-      return;
+      return handleSaveError("Merci de sélectionner au moins un pays");
     }
     const val = Number(document.getElementById("field-numeric").value);
-    if (!Number.isFinite(val)) return alert("Merci de saisir une valeur numérique valide");
+    if (!Number.isFinite(val)) {
+      return handleSaveError("Merci de saisir une valeur numérique valide");
+    }
     selectedCountries.forEach((countryId) => {
       theme.data[countryId] = val;
     });
   } else if (themeKey === "products") {
     const selectedCountries = getSelectedCountries();
     if (!selectedCountries.length) {
-      alert("Merci de sélectionner au moins un pays");
-      return;
+      return handleSaveError("Merci de sélectionner au moins un pays");
     }
     const raw = document.getElementById("field-products").value;
     selectedCountries.forEach((countryId) => {
@@ -3056,12 +3105,11 @@ function handleBackOfficeSubmit(e) {
   } else if (theme.mode === "category") {
     const selectedCountries = getSelectedCountries();
     if (!selectedCountries.length) {
-      alert("Merci de sélectionner au moins un pays");
-      return;
+      return handleSaveError("Merci de sélectionner au moins un pays");
     }
     const categoryField = document.getElementById("field-category");
     if (!categoryField) {
-      return alert("Merci d'ajouter au moins une liste pour continuer");
+      return handleSaveError("Merci d'ajouter au moins une liste pour continuer");
     }
     const category = categoryField.value;
     selectedCountries.forEach((countryId) => {
@@ -3072,6 +3120,9 @@ function handleBackOfficeSubmit(e) {
   state.themes = { ...state.themes, [themeKey]: { ...theme, data: { ...theme.data } } };
   persistThemes();
   selectTheme(themeKey);
+  setUnsavedChanges(false);
+  setSavingState(false);
+  showToast("Modifications enregistrées avec succès", "success");
 }
 
 function exportThemes() {
@@ -3089,6 +3140,7 @@ function exportThemes() {
   a.download = "planisphere-data.json";
   a.click();
   URL.revokeObjectURL(url);
+  showToast("Export JSON généré", "success");
 }
 
 function setupBackOfficeTabs() {
@@ -3166,12 +3218,16 @@ function setupBackOffice() {
     buildMedicineCatalog();
     buildPriorityCatalog();
     selectTheme(state.currentTheme);
+    setUnsavedChanges(false);
+    showToast("Données réinitialisées", "success");
   });
   const exportButton = document.getElementById("exportData");
   exportButton.addEventListener("click", exportThemes);
   setupMedicineCatalog();
   setupPriorityCatalog();
   setupBackOfficeTabs();
+  setupChangeTracking();
+  setUnsavedChanges(false);
 }
 
 function applyViewBox(value) {

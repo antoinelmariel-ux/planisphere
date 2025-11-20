@@ -104,14 +104,15 @@
 
             <div id="dynamicFields"></div>
 
-            <div class="form-actions">
+            <div class="form-actions sticky-action-bar" role="status" aria-live="polite">
               <div class="form-actions__group form-actions__group--left">
                 <button type="button" id="resetData" class="ghost">Réinitialiser les données par défaut</button>
                 <button type="button" id="deleteEntity" class="ghost danger">Supprimer l'entité</button>
+                <button type="button" id="exportData" class="ghost">Exporter les données</button>
               </div>
               <div class="form-actions__group">
-                <button type="button" id="exportData" class="ghost">Exporter les données</button>
-                <button type="submit" class="primary">Enregistrer</button>
+                <span id="unsavedIndicator" class="unsaved-indicator" aria-live="polite">Modifications non enregistrées</span>
+                <button type="submit" class="primary" id="saveChanges">Enregistrer</button>
               </div>
             </div>
           </div>
@@ -157,8 +158,10 @@
   </aside>
 
   <footer class="footer">
-    <p>Planisphère compliance – version <strong id="versionLabel">0.9.0</strong></p>
+    <p>Planisphère compliance – version <strong id="versionLabel">0.10.0</strong></p>
   </footer>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
   <script src="assets/js/app.js"></script>
 </body>
