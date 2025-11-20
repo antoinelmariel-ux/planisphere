@@ -143,10 +143,23 @@
   </aside>
 
   <footer class="footer">
-    <p>Planisphère compliance – version <strong id="versionLabel">0.15.0</strong></p>
+    <p>Planisphère compliance – version <strong id="versionLabel">0.16.0</strong></p>
   </footer>
 
   <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+
+  <div id="infoModal" class="modal" aria-hidden="true">
+    <div class="modal__backdrop" aria-hidden="true"></div>
+    <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="infoModalTitle">
+      <div class="modal__header">
+        <h4 id="infoModalTitle">Détails</h4>
+        <button type="button" class="ghost icon-button" id="closeInfoModal" aria-label="Fermer le détail">
+          <span aria-hidden="true">✕</span>
+        </button>
+      </div>
+      <div id="infoModalBody" class="modal__body"></div>
+    </div>
+  </div>
 
   <script src="assets/js/app.js"></script>
 </body>

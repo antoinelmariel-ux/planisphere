@@ -1,4 +1,4 @@
-const APP_VERSION = "0.15.0";
+const APP_VERSION = "0.16.0";
 const WORLD_SVG_PATH = "assets/world.svg";
 const CORRUPTION_INDEX_PATH = "assets/ICP2024.json";
 
@@ -518,11 +518,17 @@ const state = {
   countryLayers: {},
   defaultViewBox: VIEWBOX_FALLBACK,
   hasUnsavedChanges: false,
-  isSaving: false
+  isSaving: false,
+  currentTooltipDetail: null
 };
 
 let toastTimeout;
 let activeModalContent = null;
+
+function updateModalBodyState() {
+  const hasOpenModal = document.querySelector(".modal.is-open");
+  document.body.classList.toggle("has-modal", !!hasOpenModal);
+}
 
 const CATALOG_CONFIG = {
   medicine: {
@@ -1023,6 +1029,7 @@ function selectTheme(key) {
 
 function hideTooltip() {
   document.getElementById("tooltip").classList.remove("visible");
+  state.currentTooltipDetail = null;
 }
 
 function showTooltipForCountry(id, event) {
@@ -1037,16 +1044,31 @@ function showTooltipForCountry(id, event) {
     hideTooltip();
     return;
   }
+  state.currentTooltipDetail = { ...content, countryId: id };
 
   const rect = document.getElementById("map").getBoundingClientRect();
   const point = {
     x: event.clientX - rect.left,
     y: event.clientY - rect.top
   };
-  tooltip.innerHTML = content;
+  tooltip.innerHTML = content.preview;
   tooltip.style.left = `${point.x + 16}px`;
   tooltip.style.top = `${point.y + 16}px`;
   tooltip.classList.add("visible");
+}
+
+function handleCountryClick(id) {
+  const theme = state.themes[state.currentTheme];
+  if (!theme) return;
+  const detail =
+    state.currentTooltipDetail?.countryId === id
+      ? state.currentTooltipDetail
+      : buildTooltipContent(id, theme);
+  if (!detail) return;
+  state.currentTooltipDetail = { ...detail, countryId: id };
+  if (detail.hasOverflow) {
+    openInfoModal(detail.title, detail.full);
+  }
 }
 
 function findCountryShapes(container, country) {
@@ -1093,6 +1115,7 @@ async function createMap() {
         shape.style.cursor = "pointer";
         shape.addEventListener("mousemove", (e) => showTooltipForCountry(country.id, e));
         shape.addEventListener("mouseleave", hideTooltip);
+        shape.addEventListener("click", () => handleCountryClick(country.id));
       });
     });
 
@@ -1189,65 +1212,101 @@ function buildLegend() {
   }
 }
 
+function buildCountryProfileContent(value, country) {
+  const currency = getProfileCurrency(value);
+  const entityLabel = value.entityName || country.name;
+  const localRevenue = extractRevenueValue(value, country.id);
+  const globalRevenue = value.globalRevenue ?? sumEntityRevenue(entityLabel);
+  const activities = value.activities?.length
+    ? value.activities.join(" / ")
+    : value.activity || "—";
+  const medicines = Array.isArray(value.medicines) && value.medicines.length
+    ? value.medicines.join(", ")
+    : "—";
+  const priorities = Array.isArray(value.ethicsPriorities) && value.ethicsPriorities.length
+    ? value.ethicsPriorities.join(", ")
+    : "—";
+  const entityType = value.entityType === "distributor" ? "Distributeur" : "Filiale / JV";
+  const contacts = value.contacts || value.complianceContact || value.complianceLead || "—";
+  const manager = value.generalManager || "—";
+  const shareholding = value.shareholding || "100% LFB";
+  const employeeCount = value.employees ?? "—";
+
+  const header = `<h4>${entityLabel}</h4>
+    <p class="helper">${entityType} – ${shareholding}</p>`;
+  const dataPoints = [
+    { label: "CA pays", value: formatRevenue(localRevenue, currency) },
+    { label: "CA global entité", value: formatRevenue(globalRevenue, currency) },
+    { label: "Médicaments", value: medicines },
+    { label: "Activités", value: activities },
+    { label: "Salariés", value: employeeCount }
+  ];
+  const metaItems = [
+    `General Manager : ${manager}`,
+    `Contacts : ${contacts}`,
+    `Priorités E&C : ${priorities}`
+  ];
+
+  const cardsHtml = dataPoints
+    .map(
+      (item) =>
+        `<div class="info-card"><div class="eyebrow">${item.label}</div><strong>${item.value}</strong></div>`
+    )
+    .join("");
+  const metaHtml = metaItems.map((text) => `<p class="helper">${text}</p>`).join("");
+  const fullContent = `${header}<div class="info-grid">${cardsHtml}</div>${metaHtml}`;
+
+  const hasOverflow = dataPoints.length + metaItems.length > 3;
+  const primaryCard = dataPoints[0];
+  const previewContent = hasOverflow
+    ? `${header}<div class="info-grid"><div class="info-card"><div class="eyebrow">${primaryCard.label}</div><strong>${primaryCard.value}</strong></div></div><p class="helper tooltip__cta">Cliquez pour en savoir plus</p>`
+    : fullContent;
+
+  return {
+    title: entityLabel,
+    preview: previewContent,
+    full: fullContent,
+    hasOverflow
+  };
+}
+
 function buildTooltipContent(id, theme) {
-  if (!theme) return "";
+  if (!theme) return null;
   const country = COUNTRIES.find((c) => c.id === id);
   const value = theme.data?.[id];
-  if (!value || !country) return "";
+  if (!value || !country) return null;
   if (theme === state.themes.countryProfile) {
-    const currency = getProfileCurrency(value);
-    const entityLabel = value.entityName || country.name;
-    const localRevenue = extractRevenueValue(value, id);
-    const globalRevenue = value.globalRevenue ?? sumEntityRevenue(entityLabel);
-    const activities = value.activities?.length
-      ? value.activities.join(" / ")
-      : value.activity || "—";
-    const medicines = Array.isArray(value.medicines) && value.medicines.length
-      ? value.medicines.join(", ")
-      : "—";
-    const priorities = Array.isArray(value.ethicsPriorities) && value.ethicsPriorities.length
-      ? value.ethicsPriorities.join(", ")
-      : "—";
-    const entityType = value.entityType === "distributor" ? "Distributeur" : "Filiale / JV";
-    const contacts = value.contacts || value.complianceContact || value.complianceLead || "—";
-    const manager = value.generalManager || "—";
-    const shareholding = value.shareholding || "100% LFB";
-    const employeeCount = value.employees ?? "—";
-    return `<h4>${entityLabel}</h4>
-      <p class="helper">${entityType} – ${shareholding}</p>
-      <div class="info-grid">
-        <div class="info-card"><div class="eyebrow">CA pays</div><strong>${formatRevenue(localRevenue, currency)}</strong></div>
-        <div class="info-card"><div class="eyebrow">CA global entité</div><strong>${formatRevenue(globalRevenue, currency)}</strong></div>
-        <div class="info-card"><div class="eyebrow">Médicaments</div><span>${medicines}</span></div>
-        <div class="info-card"><div class="eyebrow">Activités</div><span>${activities}</span></div>
-        <div class="info-card"><div class="eyebrow">Salariés</div><strong>${employeeCount}</strong></div>
-      </div>
-      <p class="helper">General Manager : ${manager}</p>
-      <p class="helper">Contacts : ${contacts}</p>
-      <p class="helper">Priorités E&C : ${priorities}</p>`;
+    return buildCountryProfileContent(value, country);
   }
   if (theme === state.themes.products) {
-    return `<h4>${country.name}</h4><p>Produits : ${value.products.join(", ")}</p>`;
+    const preview = `<h4>${country.name}</h4><p>Produits : ${value.products.join(", ")}</p>`;
+    return { preview, full: preview, title: country.name, hasOverflow: false };
   }
   if (theme === state.themes.corruptionIndex) {
-    return `<h4>${country.name}</h4><p>Indice de corruption : <strong>${value}</strong></p>`;
+    const preview = `<h4>${country.name}</h4><p>Indice de corruption : <strong>${value}</strong></p>`;
+    return { preview, full: preview, title: country.name, hasOverflow: false };
   }
   if (theme === state.themes.revenueShare) {
-    return `<h4>${country.name}</h4><p>Part du chiffre d'affaires : <strong>${value}%</strong></p>`;
+    const preview = `<h4>${country.name}</h4><p>Part du chiffre d'affaires : <strong>${value}%</strong></p>`;
+    return { preview, full: preview, title: country.name, hasOverflow: false };
   }
   if (theme === state.themes.subsidiaryType) {
-    return `<h4>${country.name}</h4><p>Type de filiale : <strong>${value}</strong></p>`;
+    const preview = `<h4>${country.name}</h4><p>Type de filiale : <strong>${value}</strong></p>`;
+    return { preview, full: preview, title: country.name, hasOverflow: false };
   }
   if (theme === state.themes.areaManager) {
-    return `<h4>${country.name}</h4><p>Zone : <strong>${value}</strong></p>`;
+    const preview = `<h4>${country.name}</h4><p>Zone : <strong>${value}</strong></p>`;
+    return { preview, full: preview, title: country.name, hasOverflow: false };
   }
   if (theme.mode === "category") {
-    return `<h4>${country.name}</h4><p>Liste : <strong>${value}</strong></p>`;
+    const preview = `<h4>${country.name}</h4><p>Liste : <strong>${value}</strong></p>`;
+    return { preview, full: preview, title: country.name, hasOverflow: false };
   }
   if (theme.mode === "numeric") {
-    return `<h4>${country.name}</h4><p>Valeur : <strong>${value}</strong></p>`;
+    const preview = `<h4>${country.name}</h4><p>Valeur : <strong>${value}</strong></p>`;
+    return { preview, full: preview, title: country.name, hasOverflow: false };
   }
-  return "";
+  return null;
 }
 
 function mix(a, b, t) {
@@ -1716,7 +1775,7 @@ function closeModal() {
   if (!modal) return;
   modal.classList.remove("is-open");
   modal.setAttribute("aria-hidden", "true");
-  document.body.classList.remove("has-modal");
+  updateModalBodyState();
   if (activeModalContent) {
     activeModalContent.classList.remove("is-visible");
   }
@@ -1738,7 +1797,7 @@ function openModal(content, title = "Configuration") {
   }
   modal.classList.add("is-open");
   modal.setAttribute("aria-hidden", "false");
-  document.body.classList.add("has-modal");
+  updateModalBodyState();
 }
 
 function attachCreationPanel(panel, title) {
@@ -1759,6 +1818,48 @@ function setCreationPanelVisibility(panel, isVisible) {
   } else if (activeModalContent === panel) {
     closeModal();
   }
+}
+
+function closeInfoModal() {
+  const modal = document.getElementById("infoModal");
+  if (!modal) return;
+  modal.classList.remove("is-open");
+  modal.setAttribute("aria-hidden", "true");
+  updateModalBodyState();
+}
+
+function openInfoModal(title, content) {
+  const modal = document.getElementById("infoModal");
+  const modalBody = document.getElementById("infoModalBody");
+  const modalTitle = document.getElementById("infoModalTitle");
+  if (!modal || !modalBody) return;
+  modalBody.innerHTML = content || "";
+  if (modalTitle) {
+    modalTitle.textContent = title || "Détails";
+  }
+  modal.classList.add("is-open");
+  modal.setAttribute("aria-hidden", "false");
+  updateModalBodyState();
+}
+
+function setupInfoModal() {
+  const modal = document.getElementById("infoModal");
+  const closeButton = document.getElementById("closeInfoModal");
+  if (closeButton) {
+    closeButton.addEventListener("click", closeInfoModal);
+  }
+  if (modal) {
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal || event.target.classList.contains("modal__backdrop")) {
+        closeInfoModal();
+      }
+    });
+  }
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && modal?.classList.contains("is-open")) {
+      closeInfoModal();
+    }
+  });
 }
 
 function showCreationPanel() {
@@ -3359,6 +3460,7 @@ async function init() {
   setupBurger();
   buildBackOffice();
   setupBackOffice();
+  setupInfoModal();
   setupZoomControls();
   selectTheme(state.currentTheme);
 }
