@@ -255,6 +255,11 @@ main {
   margin: 0 0 8px;
 }
 
+.tooltip__cta {
+  color: var(--muted);
+  font-weight: 600;
+}
+
 .info-card {
   border: 1px solid var(--stroke);
   padding: 12px 14px;
