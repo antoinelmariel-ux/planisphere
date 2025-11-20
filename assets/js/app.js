@@ -1,4 +1,4 @@
-const APP_VERSION = "0.4.2";
+const APP_VERSION = "0.4.3";
 const WORLD_SVG_PATH = "assets/world.svg";
 const DEFAULT_MEDICINES = [
   "Antibiotiques",
@@ -533,7 +533,7 @@ const DEFAULT_THEMES = {
 };
 
 const VIEWBOX_FALLBACK = "0 0 2000 857";
-const EUROPE_VIEWBOX = "880 40 420 520";
+const EUROPE_VIEWBOX = "860 0 360 420";
 
 const state = {
   currentTheme: "countryProfile",
@@ -705,6 +705,17 @@ function computeEntityProjection(entityName, countryRevenue, selectedCountries) 
   return total;
 }
 
+function setMenuOpen(isOpen) {
+  const menu = document.getElementById("themeMenu");
+  const burger = document.getElementById("burgerButton");
+  if (menu) {
+    menu.classList.toggle("is-open", isOpen);
+  }
+  if (burger) {
+    burger.setAttribute("aria-expanded", isOpen ? "true" : "false");
+  }
+}
+
 function buildMenu() {
   const list = document.getElementById("themeList");
   list.innerHTML = "";
@@ -724,10 +735,7 @@ function selectTheme(key) {
   document.querySelectorAll(".theme-menu button").forEach((btn) =>
     btn.classList.toggle("is-active", btn.id === `btn-${key}`)
   );
-  const themeMenu = document.getElementById("themeMenu");
-  if (themeMenu) {
-    themeMenu.classList.remove("is-open");
-  }
+  setMenuOpen(false);
   refreshMap();
   buildLegend();
 }
@@ -970,7 +978,13 @@ function refreshMap() {
 function setupBurger() {
   const burger = document.getElementById("burgerButton");
   const menu = document.getElementById("themeMenu");
-  burger.addEventListener("click", () => menu.classList.toggle("is-open"));
+  if (!burger || !menu) return;
+
+  setMenuOpen(false);
+  burger.addEventListener("click", () => {
+    const willOpen = !menu.classList.contains("is-open");
+    setMenuOpen(willOpen);
+  });
 }
 
 function buildBackOffice() {
