@@ -413,6 +413,53 @@ textarea {
   margin-top: 8px;
 }
 
+.legend-editor {
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+  padding: 12px;
+  background: #ffffff;
+  display: grid;
+  gap: 10px;
+}
+
+.legend-editor__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.legend-editor__list {
+  display: grid;
+  gap: 8px;
+}
+
+.legend-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.legend-row input[type="color"],
+.legend-editor__form input[type="color"] {
+  padding: 0;
+  width: 48px;
+  height: 40px;
+}
+
+.legend-editor__form {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.category-field {
+  display: grid;
+  gap: 6px;
+}
+
 .footer {
   padding: 16px 24px;
   text-align: center;
