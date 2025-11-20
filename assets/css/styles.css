@@ -75,7 +75,7 @@ p {
 
 .layout {
   display: grid;
-  grid-template-columns: 320px 1fr;
+  grid-template-columns: 1fr;
   gap: 20px;
   padding: 20px 24px 80px;
 }
@@ -87,6 +87,19 @@ p {
   padding: 18px;
   height: fit-content;
   box-shadow: var(--shadow);
+  position: fixed;
+  left: 20px;
+  top: 96px;
+  width: 320px;
+  max-height: calc(100vh - 132px);
+  overflow: auto;
+  transform: translateX(-120%);
+  transition: transform 0.2s ease;
+  z-index: 15;
+}
+
+.theme-menu.is-open {
+  transform: translateX(0);
 }
 
 .theme-menu h2 {
@@ -605,24 +618,13 @@ textarea {
 
 @media (max-width: 1100px) {
   .layout {
-    grid-template-columns: 1fr;
-  }
-
-  main {
-    grid-template-columns: 1fr;
+    padding: 16px 16px 72px;
   }
 
   .theme-menu {
-    position: fixed;
     left: 12px;
     top: 84px;
     width: 280px;
-    transform: translateX(-120%);
-    transition: transform 0.2s ease;
-    z-index: 15;
-  }
-
-  .theme-menu.is-open {
-    transform: translateX(0);
+    max-height: calc(100vh - 104px);
   }
 }
