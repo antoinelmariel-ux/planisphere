@@ -1,50 +1,82 @@
-const APP_VERSION = "0.3.3";
-const TILE_RESOURCES_HELP =
-  "Pour afficher la carte, assurez-vous que Leaflet (assets/vendor/leaflet/leaflet.js et leaflet.css) est chargé et que l'accès aux tuiles OpenStreetMap (https://{s}.tile.openstreetmap.org) est autorisé.";
+const APP_VERSION = "0.3.4";
+const WORLD_SVG_PATH = "assets/world.svg";
+const COUNTRY_ID_MAPPINGS = {
+  US: "US",
+  CA: "CA",
+  MX: "MX",
+  BR: "BR",
+  AR: "AR",
+  CO: "CO",
+  PE: "PE",
+  GB: "GB",
+  FR: "FR",
+  DE: "DE",
+  ES: "ES",
+  IT: "IT",
+  NO: "NO",
+  SE: "SE",
+  DZ: "DZ",
+  MA: "MA",
+  NG: "NG",
+  ZA: "ZA",
+  EG: "EG",
+  TR: "TR",
+  SA: "SA",
+  AE: "AE",
+  IN: "IN",
+  CN: "CN",
+  JP: "JP",
+  KR: "KR",
+  AU: "AU",
+  NZ: "NZ",
+  SG: "SG",
+  ID: "ID"
+};
 
 document.getElementById("versionLabel").textContent = APP_VERSION;
 
-const COUNTRY_SHAPES = [
-  { id: "USA", name: "États-Unis", bounds: [-125, 24, -66, 49] },
-  { id: "CAN", name: "Canada", bounds: [-140, 50, -60, 83] },
-  { id: "MEX", name: "Mexique", bounds: [-117, 14, -86, 33] },
-  { id: "BRA", name: "Brésil", bounds: [-74, -34, -34, 5] },
-  { id: "ARG", name: "Argentine", bounds: [-73, -55, -53, -22] },
-  { id: "COL", name: "Colombie", bounds: [-79, -4, -66, 13] },
-  { id: "PER", name: "Pérou", bounds: [-82, -18, -68, -2] },
-  { id: "GBR", name: "Royaume-Uni", bounds: [-8, 50, 2, 59] },
-  { id: "FRA", name: "France", bounds: [-5, 42, 7, 51] },
-  { id: "DEU", name: "Allemagne", bounds: [5, 47, 15, 55] },
-  { id: "ESP", name: "Espagne", bounds: [-9, 36, 3, 44] },
-  { id: "ITA", name: "Italie", bounds: [7, 37, 18, 47] },
-  { id: "NOR", name: "Norvège", bounds: [4, 58, 31, 71] },
-  { id: "SWE", name: "Suède", bounds: [11, 55, 23, 69] },
-  { id: "DZA", name: "Algérie", bounds: [-9, 19, 12, 37] },
-  { id: "MAR", name: "Maroc", bounds: [-13, 27, -1, 36] },
-  { id: "NGA", name: "Nigéria", bounds: [2, 4, 14, 14] },
-  { id: "ZAF", name: "Afrique du Sud", bounds: [16, -35, 33, -22] },
-  { id: "EGY", name: "Égypte", bounds: [25, 22, 36, 32] },
-  { id: "TUR", name: "Turquie", bounds: [26, 36, 45, 42] },
-  { id: "SAU", name: "Arabie Saoudite", bounds: [35, 16, 56, 32] },
-  { id: "ARE", name: "Émirats arabes unis", bounds: [51, 22, 56, 27] },
-  { id: "IND", name: "Inde", bounds: [68, 8, 97, 33] },
-  { id: "CHN", name: "Chine", bounds: [73, 18, 135, 53] },
-  { id: "JPN", name: "Japon", bounds: [130, 31, 145, 45] },
-  { id: "KOR", name: "Corée du Sud", bounds: [126, 34, 130, 39] },
-  { id: "AUS", name: "Australie", bounds: [113, -44, 154, -10] },
-  { id: "NZL", name: "Nouvelle-Zélande", bounds: [166, -47, 179, -34] },
-  { id: "SGP", name: "Singapour", bounds: [103, 1, 104, 2] },
-  { id: "IDN", name: "Indonésie", bounds: [95, -11, 141, 6] }
+const COUNTRIES = [
+  { id: "US", name: "États-Unis", svgKeys: ["United States"] },
+  { id: "CA", name: "Canada", svgKeys: ["Canada"] },
+  { id: "MX", name: "Mexique", svgKeys: ["Mexico", "MX"] },
+  { id: "BR", name: "Brésil", svgKeys: ["Brazil", "BR"] },
+  { id: "AR", name: "Argentine", svgKeys: ["Argentina", "AR"] },
+  { id: "CO", name: "Colombie", svgKeys: ["Colombia", "CO"] },
+  { id: "PE", name: "Pérou", svgKeys: ["Peru", "PE"] },
+  { id: "GB", name: "Royaume-Uni", svgKeys: ["United Kingdom", "GB", "England", "Scotland", "Wales", "Northern Ireland"] },
+  { id: "FR", name: "France", svgKeys: ["France", "FR"] },
+  { id: "DE", name: "Allemagne", svgKeys: ["Germany", "DE"] },
+  { id: "ES", name: "Espagne", svgKeys: ["Spain", "ES"] },
+  { id: "IT", name: "Italie", svgKeys: ["Italy", "IT"] },
+  { id: "NO", name: "Norvège", svgKeys: ["Norway", "NO"] },
+  { id: "SE", name: "Suède", svgKeys: ["Sweden", "SE"] },
+  { id: "DZ", name: "Algérie", svgKeys: ["Algeria", "DZ"] },
+  { id: "MA", name: "Maroc", svgKeys: ["Morocco", "MA"] },
+  { id: "NG", name: "Nigéria", svgKeys: ["Nigeria", "NG"] },
+  { id: "ZA", name: "Afrique du Sud", svgKeys: ["South Africa", "ZA"] },
+  { id: "EG", name: "Égypte", svgKeys: ["Egypt", "EG"] },
+  { id: "TR", name: "Turquie", svgKeys: ["Turkey", "TR"] },
+  { id: "SA", name: "Arabie Saoudite", svgKeys: ["Saudi Arabia", "SA"] },
+  { id: "AE", name: "Émirats arabes unis", svgKeys: ["United Arab Emirates", "AE"] },
+  { id: "IN", name: "Inde", svgKeys: ["India", "IN"] },
+  { id: "CN", name: "Chine", svgKeys: ["China", "CN"] },
+  { id: "JP", name: "Japon", svgKeys: ["Japan", "JP"] },
+  { id: "KR", name: "Corée du Sud", svgKeys: ["South Korea", "Korea", "KR"] },
+  { id: "AU", name: "Australie", svgKeys: ["Australia", "AU"] },
+  { id: "NZ", name: "Nouvelle-Zélande", svgKeys: ["New Zealand", "NZ"] },
+  { id: "SG", name: "Singapour", svgKeys: ["Singapore", "SG"] },
+  { id: "ID", name: "Indonésie", svgKeys: ["Indonesia", "ID"] }
 ];
 
 const DEFAULT_THEMES = {
+
   countryProfile: {
     label: "Fiche pays",
     mode: "tooltip",
     color: "#ff9f3f",
     description: "Carte des fiches pays avec les données sociales, business et compliance.",
     data: {
-      FRA: {
+      FR: {
         employees: 1200,
         revenue: "820 M€",
         activity: "Siège, promotion et collecte",
@@ -52,7 +84,7 @@ const DEFAULT_THEMES = {
         complianceLead: "Jeanne Durand (Sponsor : CFO Groupe)",
         legal: "Protection données, anti-corruption, concurrence"
       },
-      USA: {
+      US: {
         employees: 480,
         revenue: "410 M$",
         activity: "Collecte et distribution digitale",
@@ -60,7 +92,7 @@ const DEFAULT_THEMES = {
         complianceLead: "Elena Walsh (Sponsor : CEO US)",
         legal: "FCPA, privacy state laws, export control"
       },
-      BRA: {
+      BR: {
         employees: 220,
         revenue: "125 M$",
         activity: "Promotion et collecte",
@@ -68,7 +100,7 @@ const DEFAULT_THEMES = {
         complianceLead: "Paulo Mendes (Sponsor : COO LatAm)",
         legal: "LGPD, anti-corruption, concurrence"
       },
-      NGA: {
+      NG: {
         employees: 160,
         revenue: "65 M$",
         activity: "Collecte et distribution locale",
@@ -76,7 +108,7 @@ const DEFAULT_THEMES = {
         complianceLead: "Adaeze Okafor (Sponsor : Area Manager 2)",
         legal: "Donnees, sanctions locales, diligence tiers"
       },
-      IND: {
+      IN: {
         employees: 350,
         revenue: "190 M$",
         activity: "Promotion & collecte",
@@ -84,7 +116,7 @@ const DEFAULT_THEMES = {
         complianceLead: "Amit Sharma (Sponsor : CTO Groupe)",
         legal: "IT Rules, prévention fraude, concurrence"
       },
-      CAN: {
+      CA: {
         employees: 260,
         revenue: "220 M$",
         activity: "Distribution et support régional",
@@ -92,7 +124,7 @@ const DEFAULT_THEMES = {
         complianceLead: "Sophie Tremblay (Sponsor : CRO Amériques)",
         legal: "LPRPDE, lutte anticorruption, obligations export"
       },
-      DEU: {
+      DE: {
         employees: 310,
         revenue: "275 M€",
         activity: "Promotion et opérations industrielles",
@@ -100,7 +132,7 @@ const DEFAULT_THEMES = {
         complianceLead: "Karl Hoffmann (Sponsor : COO Europe)",
         legal: "BAFA export control, concurrence, RGPD"
       },
-      ESP: {
+      ES: {
         employees: 140,
         revenue: "95 M€",
         activity: "Promotion & collecte",
@@ -108,7 +140,7 @@ const DEFAULT_THEMES = {
         complianceLead: "Lucía Ramos (Sponsor : Directeur Europe Sud)",
         legal: "RGPD, Sapin II local, obligations CNMC"
       },
-      ARE: {
+      AE: {
         employees: 120,
         revenue: "70 M$",
         activity: "Hub régional et support partenaires",
@@ -116,7 +148,7 @@ const DEFAULT_THEMES = {
         complianceLead: "Yara Al Nahyan (Sponsor : Area Manager 2)",
         legal: "Lutte anti-blanchiment, obligations Emirats, données sensibles"
       },
-      AUS: {
+      AU: {
         employees: 150,
         revenue: "110 M$",
         activity: "Distribution, support et R&D locale",
@@ -133,26 +165,26 @@ const DEFAULT_THEMES = {
     domain: [0, 100],
     description: "Indice Transparency International (0 = fort risque, 100 = risque faible).",
     data: {
-      CAN: 74,
-      FRA: 72,
-      DEU: 79,
-      USA: 69,
-      GBR: 73,
-      ESP: 60,
-      BRA: 38,
-      ARG: 37,
-      NGA: 24,
-      ZAF: 43,
-      IND: 40,
-      CHN: 45,
-      JPN: 73,
-      AUS: 75,
-      MEX: 31,
-      TUR: 36,
-      ARE: 68,
-      MAR: 38,
-      EGY: 29,
-      KOR: 63
+      CA: 74,
+      FR: 72,
+      DE: 79,
+      US: 69,
+      GB: 73,
+      ES: 60,
+      BR: 38,
+      AR: 37,
+      NG: 24,
+      ZA: 43,
+      IN: 40,
+      CN: 45,
+      JP: 73,
+      AU: 75,
+      MX: 31,
+      TR: 36,
+      AE: 68,
+      MA: 38,
+      EG: 29,
+      KR: 63
     }
   },
   revenueShare: {
@@ -162,21 +194,21 @@ const DEFAULT_THEMES = {
     domain: [0, 20],
     description: "Répartition du chiffre d'affaires consolidé.",
     data: {
-      FRA: 18,
-      USA: 14,
-      DEU: 8,
-      GBR: 6,
-      IND: 5,
-      BRA: 4,
-      AUS: 4,
-      CHN: 6,
-      NGA: 2,
-      ARE: 3,
-      JPN: 3,
-      MEX: 2,
-      CAN: 5,
-      ESP: 3,
-      ITA: 2
+      FR: 18,
+      US: 14,
+      DE: 8,
+      GB: 6,
+      IN: 5,
+      BR: 4,
+      AU: 4,
+      CN: 6,
+      NG: 2,
+      AE: 3,
+      JP: 3,
+      MX: 2,
+      CA: 5,
+      ES: 3,
+      IT: 2
     }
   },
   subsidiaryType: {
@@ -190,20 +222,20 @@ const DEFAULT_THEMES = {
       Distributeur: "#ffd66b"
     },
     data: {
-      FRA: "Promotion & Collecte",
-      USA: "Collecte",
-      DEU: "Promotion",
-      GBR: "Promotion",
-      BRA: "Promotion & Collecte",
-      NGA: "Collecte",
-      ARE: "Distributeur",
-      AUS: "Distributeur",
-      IND: "Promotion & Collecte",
-      JPN: "Promotion",
-      ESP: "Promotion",
-      TUR: "Collecte",
-      MAR: "Promotion",
-      CAN: "Promotion & Collecte"
+      FR: "Promotion & Collecte",
+      US: "Collecte",
+      DE: "Promotion",
+      GB: "Promotion",
+      BR: "Promotion & Collecte",
+      NG: "Collecte",
+      AE: "Distributeur",
+      AU: "Distributeur",
+      IN: "Promotion & Collecte",
+      JP: "Promotion",
+      ES: "Promotion",
+      TR: "Collecte",
+      MA: "Promotion",
+      CA: "Promotion & Collecte"
     }
   },
   products: {
@@ -212,16 +244,16 @@ const DEFAULT_THEMES = {
     color: "#64d4ff",
     description: "Portefeuille produits par marché (multi-produits autorisés).",
     data: {
-      FRA: { products: ["Suite data", "API open compliance", "Monitoring IA"] },
-      USA: { products: ["Suite data", "Monitoring IA"] },
-      DEU: { products: ["API open compliance", "Tableaux M&A"] },
-      GBR: { products: ["Suite data", "Screening tiers"] },
-      NGA: { products: ["Screening tiers", "KYC mobile"] },
-      IND: { products: ["Suite data", "KYC mobile", "Monitoring IA"] },
-      BRA: { products: ["Suite data", "Screening tiers"] },
-      ESP: { products: ["API open compliance", "Monitoring IA"] },
-      CAN: { products: ["Suite data", "Tableaux M&A"] },
-      AUS: { products: ["Screening tiers", "KYC mobile"] }
+      FR: { products: ["Suite data", "API open compliance", "Monitoring IA"] },
+      US: { products: ["Suite data", "Monitoring IA"] },
+      DE: { products: ["API open compliance", "Tableaux M&A"] },
+      GB: { products: ["Suite data", "Screening tiers"] },
+      NG: { products: ["Screening tiers", "KYC mobile"] },
+      IN: { products: ["Suite data", "KYC mobile", "Monitoring IA"] },
+      BR: { products: ["Suite data", "Screening tiers"] },
+      ES: { products: ["API open compliance", "Monitoring IA"] },
+      CA: { products: ["Suite data", "Tableaux M&A"] },
+      AU: { products: ["Screening tiers", "KYC mobile"] }
     }
   },
   areaManager: {
@@ -234,20 +266,20 @@ const DEFAULT_THEMES = {
       "Area Manager 3": "#7f8cff"
     },
     data: {
-      FRA: "Area Manager 1",
-      GBR: "Area Manager 1",
-      DEU: "Area Manager 1",
-      CAN: "Area Manager 1",
-      USA: "Area Manager 2",
-      MEX: "Area Manager 2",
-      BRA: "Area Manager 2",
-      NGA: "Area Manager 2",
-      ESP: "Area Manager 2",
-      ARE: "Area Manager 2",
-      IND: "Area Manager 3",
-      CHN: "Area Manager 3",
-      JPN: "Area Manager 3",
-      AUS: "Area Manager 3"
+      FR: "Area Manager 1",
+      GB: "Area Manager 1",
+      DE: "Area Manager 1",
+      CA: "Area Manager 1",
+      US: "Area Manager 2",
+      MX: "Area Manager 2",
+      BR: "Area Manager 2",
+      NG: "Area Manager 2",
+      ES: "Area Manager 2",
+      AE: "Area Manager 2",
+      IN: "Area Manager 3",
+      CN: "Area Manager 3",
+      JP: "Area Manager 3",
+      AU: "Area Manager 3"
     }
   }
 };
@@ -279,24 +311,30 @@ function cloneThemes(data) {
   return JSON.parse(JSON.stringify(data));
 }
 
-function boundsToLatLng(bounds) {
-  const [minLon, minLat, maxLon, maxLat] = bounds;
-  return [
-    [minLat, minLon],
-    [maxLat, maxLon]
-  ];
+function normalizeThemeCountries(themes) {
+  const mapped = cloneThemes(themes);
+  Object.values(mapped).forEach((theme) => {
+    if (!theme.data) return;
+    const normalized = {};
+    Object.entries(theme.data).forEach(([key, value]) => {
+      const target = COUNTRY_ID_MAPPINGS[key] || key;
+      normalized[target] = value;
+    });
+    theme.data = normalized;
+  });
+  return mapped;
 }
 
 function loadThemes() {
   try {
     const cached = localStorage.getItem("complianceThemes");
     if (cached) {
-      return JSON.parse(cached);
+      return normalizeThemeCountries(JSON.parse(cached));
     }
   } catch (error) {
     console.warn("Impossible de charger le cache", error);
   }
-  return cloneThemes(DEFAULT_THEMES);
+  return normalizeThemeCountries(DEFAULT_THEMES);
 }
 
 function persistThemes() {
@@ -344,46 +382,65 @@ function showTooltipForCountry(id, event) {
     return;
   }
 
-  const point = event.containerPoint;
+  const rect = document.getElementById("map").getBoundingClientRect();
+  const point = {
+    x: event.clientX - rect.left,
+    y: event.clientY - rect.top
+  };
   tooltip.innerHTML = content;
   tooltip.style.left = `${point.x + 16}px`;
   tooltip.style.top = `${point.y + 16}px`;
   tooltip.classList.add("visible");
 }
 
-function createMap() {
+function findCountryShapes(container, country) {
+  const elements = [];
+  country.svgKeys.forEach((key) => {
+    container.querySelectorAll(`#${key}, [name="${key}"]`).forEach((node) => {
+      if (!elements.includes(node)) elements.push(node);
+    });
+    const classSelector = `.${key.replace(/\s+/g, ".")}`;
+    container.querySelectorAll(classSelector).forEach((node) => {
+      if (!elements.includes(node)) elements.push(node);
+    });
+  });
+  return elements;
+}
+
+async function createMap() {
   const container = document.getElementById("map");
   container.innerHTML = "";
   hideResourceNotice();
-  state.map = L.map(container, { worldCopyJump: true });
+  state.countryLayers = {};
 
-  const tiles = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 6,
-    minZoom: 2,
-    attribution: "© OpenStreetMap contributeurs"
-  });
+  try {
+    const response = await fetch(WORLD_SVG_PATH);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const svgMarkup = await response.text();
+    container.innerHTML = svgMarkup;
+    const svg = container.querySelector("svg");
+    if (!svg) throw new Error("SVG introuvable");
+    svg.setAttribute("width", "100%");
+    svg.setAttribute("height", "100%");
+    svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+    state.map = svg;
 
-  tiles.addEventListener("load", () => hideResourceNotice());
-  tiles.addEventListener("tileerror", () => showResourceNotice(TILE_RESOURCES_HELP));
-  tiles.addTo(state.map);
-
-  const bounds = L.latLngBounds([]);
-  COUNTRY_SHAPES.forEach((country) => {
-    const rectangle = L.rectangle(boundsToLatLng(country.bounds), {
-      color: "#cbd5e1",
-      weight: 1,
-      fillColor: "#e6edf7",
-      fillOpacity: 1
+    COUNTRIES.forEach((country) => {
+      const shapes = findCountryShapes(container, country);
+      if (!shapes.length) return;
+      state.countryLayers[country.id] = shapes;
+      shapes.forEach((shape) => {
+        shape.style.cursor = "pointer";
+        shape.addEventListener("mousemove", (e) => showTooltipForCountry(country.id, e));
+        shape.addEventListener("mouseleave", hideTooltip);
+      });
     });
-    rectangle.addTo(state.map);
-    rectangle.on("mousemove", (e) => showTooltipForCountry(country.id, e));
-    rectangle.on("mouseout", hideTooltip);
-    state.countryLayers[country.id] = rectangle;
-    bounds.extend(boundsToLatLng(country.bounds));
-  });
 
-  state.map.fitBounds(bounds, { padding: [20, 20] });
-  refreshColors();
+    refreshColors();
+  } catch (error) {
+    console.error("Impossible de charger la carte SVG", error);
+    showResourceNotice("Impossible de charger la carte World.svg.");
+  }
 }
 
 function colorForCountry(id, theme) {
@@ -411,14 +468,14 @@ function colorForCountry(id, theme) {
 
 function refreshColors() {
   const theme = state.themes[state.currentTheme];
-  Object.entries(state.countryLayers).forEach(([id, layer]) => {
+  Object.entries(state.countryLayers).forEach(([id, shapes]) => {
     const fill = colorForCountry(id, theme);
     const hasData = theme.data[id] !== undefined;
-    layer.setStyle({
-      fillColor: fill,
-      fillOpacity: hasData ? 1 : 0.35,
-      color: "#cbd5e1",
-      weight: 1
+    shapes.forEach((shape) => {
+      shape.style.fill = fill;
+      shape.style.opacity = hasData ? 1 : 0.35;
+      shape.style.stroke = "#cbd5e1";
+      shape.style.strokeWidth = 0.5;
     });
   });
 }
@@ -465,7 +522,7 @@ function buildLegend() {
 }
 
 function buildTooltipContent(id, theme) {
-  const country = COUNTRY_SHAPES.find((c) => c.id === id);
+  const country = COUNTRIES.find((c) => c.id === id);
   const value = theme.data[id];
   if (!value || !country) return "";
   if (theme === state.themes.countryProfile) {
@@ -569,7 +626,7 @@ function buildBackOffice() {
 
   const countrySelect = document.getElementById("countrySelect");
   countrySelect.innerHTML = "";
-  COUNTRY_SHAPES.forEach((country) => {
+  COUNTRIES.forEach((country) => {
     const option = document.createElement("option");
     option.value = country.id;
     option.textContent = country.name;
@@ -632,7 +689,7 @@ function handleBackOfficeSubmit(e) {
       employees: Number(document.getElementById("field-employees").value || 0),
       revenue: document.getElementById("field-revenue").value || "N/A",
       activity: document.getElementById("field-activity").value || "",
-      country: COUNTRY_SHAPES.find((c) => c.id === countryId)?.name || countryId,
+      country: COUNTRIES.find((c) => c.id === countryId)?.name || countryId,
       complianceLead: document.getElementById("field-complianceLead").value || "",
       legal: document.getElementById("field-legal").value || ""
     };
