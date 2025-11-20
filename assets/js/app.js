@@ -1,4 +1,4 @@
-const APP_VERSION = "0.8.3";
+const APP_VERSION = "0.8.4";
 const WORLD_SVG_PATH = "assets/world.svg";
 const CORRUPTION_INDEX_PATH = "assets/ICP2024.json";
 
@@ -577,17 +577,39 @@ function normalizeThemeCountries(themes) {
   return mapped;
 }
 
+function applyThemeDefaults(themes) {
+  const merged = {};
+  const source = themes || {};
+
+  Object.entries(DEFAULT_THEMES).forEach(([key, defaults]) => {
+    const stored = source[key] || {};
+    merged[key] = {
+      ...defaults,
+      ...stored,
+      legend: { ...(defaults.legend || {}), ...(stored.legend || {}) },
+      data: { ...(stored.data || {}) }
+    };
+  });
+
+  Object.entries(source).forEach(([key, theme]) => {
+    if (merged[key]) return;
+    merged[key] = theme;
+  });
+
+  return merged;
+}
+
 function loadThemes() {
   try {
     const cached = localStorage.getItem("complianceThemes");
     if (cached) {
       const parsed = JSON.parse(cached);
-      return normalizeThemeCountries(parsed);
+      return applyThemeDefaults(normalizeThemeCountries(parsed));
     }
   } catch (error) {
     console.warn("Impossible de charger les thématiques", error);
   }
-  return normalizeThemeCountries(DEFAULT_THEMES);
+  return applyThemeDefaults(normalizeThemeCountries(DEFAULT_THEMES));
 }
 
 function persistThemes() {
