@@ -1,4 +1,4 @@
-const APP_VERSION = "0.8.2";
+const APP_VERSION = "0.8.3";
 const WORLD_SVG_PATH = "assets/world.svg";
 const CORRUPTION_INDEX_PATH = "assets/ICP2024.json";
 
@@ -902,6 +902,7 @@ function selectTheme(key) {
     return;
   }
   state.currentTheme = key;
+  syncBackOfficeTabSelection(key);
   document.querySelectorAll(".theme-menu button").forEach((btn) =>
     btn.classList.toggle("is-active", btn.id === `btn-${key}`)
   );
@@ -1165,7 +1166,39 @@ function refreshMap() {
   hideTooltip();
 }
 
-function handleThemeSelectChange() {
+function syncBackOfficeTabSelection(themeKey) {
+  const tabs = Array.from(
+    document.querySelectorAll(".back-office__nav [role='tab'][data-theme]")
+  );
+  const targetTab = tabs.find((tab) => tab.dataset.theme === themeKey);
+  if (!targetTab) return;
+
+  const panelId = targetTab.getAttribute("aria-controls");
+
+  tabs.forEach((tab) => {
+    const isActive = tab === targetTab;
+    tab.classList.toggle("is-active", isActive);
+    tab.setAttribute("aria-selected", isActive.toString());
+    tab.tabIndex = isActive ? "0" : "-1";
+  });
+
+  document.querySelectorAll(".back-office__panel").forEach((panel) => {
+    const isActive = panel.id === panelId;
+    panel.classList.toggle("is-active", isActive);
+    if (isActive) {
+      panel.removeAttribute("hidden");
+      panel.setAttribute("aria-hidden", "false");
+    } else {
+      panel.setAttribute("hidden", "true");
+      panel.setAttribute("aria-hidden", "true");
+    }
+  });
+}
+
+function handleThemeSelectChange(event) {
+  const themeKey = event.target.value;
+  state.currentTheme = themeKey;
+  selectTheme(themeKey);
   renderDynamicFields();
 }
 
