@@ -372,6 +372,12 @@ main {
   gap: 16px;
 }
 
+.dynamic-fields {
+  width: 100%;
+  display: grid;
+  gap: 16px;
+}
+
 .entity-sidebar {
   border: 1px solid var(--stroke);
   border-radius: var(--radius);
@@ -544,14 +550,15 @@ label {
   gap: 10px;
 }
 
-.theme-context {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px;
-  border: 1px solid var(--stroke);
-  border-radius: 12px;
-  background: #f8fafc;
+
+.creation-panel {
+  display: none;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+.creation-panel.is-visible {
+  display: grid;
 }
 
 .corruption-table table {
@@ -664,6 +671,10 @@ textarea {
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.form-actions.is-hidden {
+  display: none;
 }
 
 .sticky-action-bar {
