@@ -1,4 +1,4 @@
-const APP_VERSION = "0.3.4";
+const APP_VERSION = "0.3.5";
 const WORLD_SVG_PATH = "assets/world.svg";
 const COUNTRY_ID_MAPPINGS = {
   US: "US",
@@ -284,11 +284,15 @@ const DEFAULT_THEMES = {
   }
 };
 
+const VIEWBOX_FALLBACK = "0 0 2000 857";
+const EUROPE_VIEWBOX = "880 40 420 520";
+
 const state = {
   currentTheme: "countryProfile",
   themes: loadThemes(),
   map: null,
-  countryLayers: {}
+  countryLayers: {},
+  defaultViewBox: VIEWBOX_FALLBACK
 };
 
 function showResourceNotice(message) {
@@ -366,7 +370,6 @@ function selectTheme(key) {
   );
   refreshMap();
   buildLegend();
-  updateInsights();
 }
 
 function hideTooltip() {
@@ -423,6 +426,10 @@ async function createMap() {
     svg.setAttribute("width", "100%");
     svg.setAttribute("height", "100%");
     svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+    const baseViewBox =
+      svg.getAttribute("viewBox") || svg.getAttribute("viewbox") || VIEWBOX_FALLBACK;
+    svg.setAttribute("viewBox", baseViewBox);
+    state.defaultViewBox = baseViewBox;
     state.map = svg;
 
     COUNTRIES.forEach((country) => {
@@ -567,42 +574,6 @@ function mix(a, b, t) {
   return `rgb(${r}, ${g}, ${bVal})`;
 }
 
-function updateInsights() {
-  const theme = state.themes[state.currentTheme];
-  document.getElementById("insightTitle").textContent = theme.label;
-  document.getElementById("themeMode").textContent = theme.mode === "numeric" ? "Zone colorée" : "Infos-bulles";
-  const body = document.getElementById("insightBody");
-  body.innerHTML = "";
-  const desc = document.createElement("p");
-  desc.textContent = theme.description;
-  body.appendChild(desc);
-
-  const cards = document.createElement("div");
-  cards.className = "info-grid";
-  const activeCountries = Object.keys(theme.data || {}).length;
-  const cardA = document.createElement("div");
-  cardA.className = "info-card";
-  cardA.innerHTML = `<div class="eyebrow">Pays couverts</div><strong>${activeCountries}</strong>`;
-  cards.appendChild(cardA);
-
-  if (theme.mode === "numeric") {
-    const values = Object.values(theme.data || {});
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    const cardB = document.createElement("div");
-    cardB.className = "info-card";
-    cardB.innerHTML = `<div class="eyebrow">Amplitude</div><strong>${min} → ${max}</strong>`;
-    cards.appendChild(cardB);
-  } else {
-    const cardB = document.createElement("div");
-    cardB.className = "info-card";
-    cardB.innerHTML = `<div class="eyebrow">Mode</div><strong>${theme.mode === "category" ? "Zone colorée" : "Infos-bulles"}</strong>`;
-    cards.appendChild(cardB);
-  }
-
-  body.appendChild(cards);
-}
-
 function refreshMap() {
   refreshColors();
   hideTooltip();
@@ -726,14 +697,30 @@ function setupBackOffice() {
   });
 }
 
+function applyViewBox(value) {
+  if (!state.map) return;
+  state.map.setAttribute("viewBox", value);
+}
+
+function setupZoomControls() {
+  const zoomEurope = document.getElementById("zoomEurope");
+  const resetZoom = document.getElementById("resetZoom");
+  if (zoomEurope) {
+    zoomEurope.addEventListener("click", () => applyViewBox(EUROPE_VIEWBOX));
+  }
+  if (resetZoom) {
+    resetZoom.addEventListener("click", () => applyViewBox(state.defaultViewBox));
+  }
+}
+
 function init() {
   buildMenu();
   createMap();
   buildLegend();
-  updateInsights();
   setupBurger();
   buildBackOffice();
   setupBackOffice();
+  setupZoomControls();
   selectTheme(state.currentTheme);
 }
 
