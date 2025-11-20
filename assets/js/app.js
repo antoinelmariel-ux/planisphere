@@ -1,4 +1,4 @@
-const APP_VERSION = "0.6.0";
+const APP_VERSION = "0.7.0";
 const WORLD_SVG_PATH = "assets/world.svg";
 const CORRUPTION_INDEX_PATH = "assets/ICP2024.json";
 
@@ -1504,7 +1504,8 @@ function buildLegendEditor(themeKey, theme) {
 
   const addButton = document.createElement("button");
   addButton.type = "button";
-  addButton.textContent = "Ajouter une liste";
+  addButton.textContent =
+    themeKey === "embargo" ? "Créer une liste d'embargo" : "Ajouter une liste";
   addButton.addEventListener("click", () => {
     const label = nameInput.value.trim();
     if (!label) return alert("Merci d'indiquer un nom de liste");
@@ -1518,6 +1519,20 @@ function buildLegendEditor(themeKey, theme) {
   form.appendChild(addButton);
   container.appendChild(form);
 
+  return container;
+}
+
+function buildCreationButton(label) {
+  const container = document.createElement("div");
+  container.className = "theme-actions";
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "primary";
+  button.textContent = label;
+  button.addEventListener("click", () => handleBackOfficeSubmit(new Event("submit")));
+
+  container.appendChild(button);
   return container;
 }
 
@@ -1965,6 +1980,7 @@ function renderDynamicFields() {
         <div id="priorityChoices" class="pill-picker"></div>
       </div>
     `;
+    dynamic.prepend(buildCreationButton("Créer l'entité"));
     setupCountrySearch();
     buildMedicineChoices();
     buildPriorityChoices();
@@ -2014,6 +2030,7 @@ function renderDynamicFields() {
     wrapper.className = "area-manager";
     dynamic.appendChild(wrapper);
     buildProspectingMatrix();
+    dynamic.appendChild(buildCreationButton("Créer des pays en prospection"));
   } else if (theme.mode === "numeric") {
     dynamic.innerHTML = `<label>Valeur numérique<input id="field-numeric" type="number" step="0.1" /></label>`;
   } else if (themeKey === "products") {
