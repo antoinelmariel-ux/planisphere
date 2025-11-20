@@ -1,4 +1,4 @@
-const APP_VERSION = "0.13.0";
+const APP_VERSION = "0.14.0";
 const WORLD_SVG_PATH = "assets/world.svg";
 const CORRUPTION_INDEX_PATH = "assets/ICP2024.json";
 
@@ -576,11 +576,11 @@ function setUnsavedChanges(value) {
 
 function setSavingState(isSaving) {
   state.isSaving = isSaving;
-  const saveButton = document.getElementById("saveChanges");
-  if (saveButton) {
-    saveButton.disabled = isSaving;
-    saveButton.classList.toggle("is-loading", isSaving);
-  }
+  const saveButtons = document.querySelectorAll("[data-save-control]");
+  saveButtons.forEach((button) => {
+    button.disabled = isSaving;
+    button.classList.toggle("is-loading", isSaving);
+  });
 }
 
 function setupChangeTracking() {
@@ -1740,13 +1740,20 @@ function setCreationPanelVisibility(panel, isVisible) {
 function showCreationPanel() {
   const panel = document.getElementById("creationPanel");
   setCreationPanelVisibility(panel, true);
-  setFormActionsVisibility(true);
 }
 
-function setFormActionsVisibility(isVisible) {
-  const actions = document.getElementById("formActions");
-  if (!actions) return;
-  actions.classList.toggle("is-hidden", !isVisible);
+function createSaveActions(label = "Enregistrer") {
+  const container = document.createElement("div");
+  container.className = "save-actions";
+
+  const button = document.createElement("button");
+  button.type = "submit";
+  button.className = "primary";
+  button.dataset.saveControl = "true";
+  button.textContent = label;
+
+  container.appendChild(button);
+  return container;
 }
 
 function buildCreationButton(label, onClick) {
@@ -2143,7 +2150,6 @@ function renderDynamicFields() {
   const theme = state.themes[themeKey];
   const dynamic = document.getElementById("dynamicFields");
   dynamic.innerHTML = "";
-  setFormActionsVisibility(false);
   closeModal();
 
   if (themeKey !== "countryProfile") {
@@ -2216,7 +2222,6 @@ function renderDynamicFields() {
       </div>
     `;
 
-    dynamic.appendChild(buildCountryProfileList());
     dynamic.appendChild(
       buildCreationButton("Créer l'entité", () => {
         state.selectedEntityId = null;
@@ -2225,6 +2230,7 @@ function renderDynamicFields() {
         field?.focus();
       })
     );
+    dynamic.appendChild(buildCountryProfileList());
     attachCreationPanel(creationPanel, "Créer ou modifier une entité");
     setupCountrySearch();
     buildMedicineChoices();
@@ -2236,7 +2242,6 @@ function renderDynamicFields() {
     const hasEntities = Object.keys(theme.data || {}).length > 0;
     const shouldShowForm = !!state.selectedEntityId || !hasEntities;
     setCreationPanelVisibility(creationPanel, shouldShowForm);
-    setFormActionsVisibility(shouldShowForm);
   } else if (themeKey === "embargo") {
     const creationPanel = document.createElement("div");
     creationPanel.id = "creationPanel";
@@ -2260,7 +2265,6 @@ function renderDynamicFields() {
       <div id="countryTags" class="tag-container" aria-live="polite"></div>
     `;
     creationPanel.appendChild(picker);
-    dynamic.appendChild(buildEmbargoSummary());
     dynamic.appendChild(
       buildCreationButton("Créer une liste d'embargo", () => {
         creationPanel.dataset.currentList = "";
@@ -2277,11 +2281,11 @@ function renderDynamicFields() {
         showCreationPanel();
       })
     );
+    dynamic.appendChild(buildEmbargoSummary());
     attachCreationPanel(creationPanel, "Créer une liste d'embargo");
     setupCountrySearch();
     const shouldShowForm = !Object.keys(theme.data || {}).length;
     setCreationPanelVisibility(creationPanel, shouldShowForm);
-    setFormActionsVisibility(shouldShowForm);
   } else if (themeKey === "corruptionIndex") {
     const tableWrapper = document.createElement("div");
     tableWrapper.className = "corruption-table";
@@ -2294,8 +2298,8 @@ function renderDynamicFields() {
     table.innerHTML = `<thead><tr><th>Pays</th><th>Indice 2024</th></tr></thead><tbody></tbody>`;
     tableWrapper.appendChild(table);
     dynamic.appendChild(tableWrapper);
+    dynamic.appendChild(createSaveActions());
     buildCorruptionTable();
-    setFormActionsVisibility(true);
   } else if (themeKey === "areaManager") {
     if (theme.allowCustomLegend) {
       dynamic.appendChild(buildLegendEditor(themeKey, theme));
@@ -2305,35 +2309,28 @@ function renderDynamicFields() {
     container.className = "area-manager";
     dynamic.appendChild(container);
     buildAreaManagerAssignments();
-    setFormActionsVisibility(true);
+    dynamic.appendChild(createSaveActions());
   } else if (themeKey === "prospecting") {
-    const creationPanel = document.createElement("div");
-    creationPanel.id = "creationPanel";
-    creationPanel.className = "creation-panel";
+    dynamic.appendChild(createSaveActions());
     const wrapper = document.createElement("div");
     wrapper.id = "prospectingMatrix";
     wrapper.className = "area-manager";
-    creationPanel.appendChild(wrapper);
-    dynamic.appendChild(buildProspectingSummary());
-    dynamic.appendChild(buildCreationButton("Créer des pays en prospection"));
-    attachCreationPanel(creationPanel, "Créer des pays en prospection");
+    dynamic.appendChild(wrapper);
     buildProspectingMatrix();
-    const shouldShowForm = !Object.keys(theme.data || {}).length;
-    setCreationPanelVisibility(creationPanel, shouldShowForm);
-    setFormActionsVisibility(shouldShowForm);
+    dynamic.appendChild(createSaveActions());
   } else if (theme.mode === "numeric") {
     dynamic.innerHTML = `<label>Valeur numérique<input id="field-numeric" type="number" step="0.1" /></label>`;
-    setFormActionsVisibility(true);
+    dynamic.appendChild(createSaveActions());
   } else if (themeKey === "products") {
     dynamic.innerHTML = `<label>Produits (séparés par des virgules)<textarea id="field-products"></textarea></label>`;
-    setFormActionsVisibility(true);
+    dynamic.appendChild(createSaveActions());
   } else if (theme.mode === "category") {
     if (theme.allowCustomLegend) {
       dynamic.appendChild(buildLegendEditor(themeKey, theme));
     }
     const categoryField = buildCategoryField(themeKey, theme);
     dynamic.appendChild(categoryField);
-    setFormActionsVisibility(true);
+    dynamic.appendChild(createSaveActions());
   }
 
 }
@@ -2672,7 +2669,7 @@ function buildAreaManagerAssignments() {
   legendEntries.forEach((areaName) => {
     const block = document.createElement("details");
     block.className = "accordion";
-    block.open = true;
+    block.open = false;
     const summary = document.createElement("summary");
     summary.innerHTML = `<span>${areaName}</span>`;
     block.appendChild(summary);

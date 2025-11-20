@@ -74,19 +74,18 @@
           <div class="config-detail">
             <select id="themeSelect" class="visually-hidden" aria-hidden="true" tabindex="-1"></select>
 
-            <div id="dynamicFields" class="dynamic-fields"></div>
-
-            <div class="form-actions sticky-action-bar" id="formActions" role="status" aria-live="polite">
-              <div class="form-actions__group form-actions__group--left">
+            <div class="action-toolbar" role="status" aria-live="polite">
+              <div class="action-toolbar__group">
                 <button type="button" id="resetData" class="ghost">Réinitialiser les données par défaut</button>
-                <button type="button" id="deleteEntity" class="ghost danger">Supprimer l'entité</button>
                 <button type="button" id="exportData" class="ghost">Exporter les données</button>
               </div>
-              <div class="form-actions__group">
-                <span id="unsavedIndicator" class="unsaved-indicator" aria-live="polite">Modifications non enregistrées</span>
-                <button type="submit" class="primary" id="saveChanges">Enregistrer</button>
+              <div class="action-toolbar__group">
+                <span id="unsavedIndicator" class="unsaved-indicator">Modifications non enregistrées</span>
+                <button type="button" id="deleteEntity" class="ghost danger">Supprimer l'entité</button>
               </div>
             </div>
+
+            <div id="dynamicFields" class="dynamic-fields"></div>
           </div>
       </section>
       <div id="modalOverlay" class="modal" aria-hidden="true">
@@ -97,6 +96,9 @@
             <button type="button" id="closeModal" class="ghost">Fermer</button>
           </div>
           <div id="modalBody" class="modal__body"></div>
+          <div class="modal__footer">
+            <button type="submit" class="primary" id="modalSubmit" data-save-control="true">Valider la création</button>
+          </div>
         </div>
       </div>
     </form>
@@ -139,7 +141,7 @@
   </aside>
 
   <footer class="footer">
-    <p>Planisphère compliance – version <strong id="versionLabel">0.13.0</strong></p>
+    <p>Planisphère compliance – version <strong id="versionLabel">0.14.0</strong></p>
   </footer>
 
   <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
