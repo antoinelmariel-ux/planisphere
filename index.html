@@ -73,7 +73,22 @@
         </label>
 
         <fieldset class="country-fieldset">
-          <legend>Pays (sélection par continent)</legend>
+          <legend>
+            <div class="country-legend">
+              <span>Pays (sélection par continent)</span>
+              <div id="countryBadges" class="country-badges"></div>
+            </div>
+          </legend>
+          <div class="country-toolbar">
+            <label class="visually-hidden" for="countryFilter">Rechercher un pays</label>
+            <input
+              id="countryFilter"
+              type="search"
+              placeholder="Rechercher par nom ou code"
+              aria-label="Rechercher un pays"
+            />
+            <div id="continentFilters" class="continent-filters" aria-label="Filtrer par continent"></div>
+          </div>
           <div id="countrySelection" class="country-selector"></div>
         </fieldset>
 
@@ -127,7 +142,7 @@
   </aside>
 
   <footer class="footer">
-    <p>Planisphère compliance – version <strong id="versionLabel">0.4.4</strong></p>
+    <p>Planisphère compliance – version <strong id="versionLabel">0.4.5</strong></p>
   </footer>
 
   <script src="assets/js/app.js"></script>
