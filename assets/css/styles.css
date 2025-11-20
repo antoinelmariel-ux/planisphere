@@ -276,6 +276,17 @@ main {
   font-size: 13px;
 }
 
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
 .back-office {
   position: fixed;
   inset: 0;
@@ -379,13 +390,64 @@ label {
   border-radius: 12px;
   padding: 10px 12px;
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
 .country-fieldset legend {
   color: var(--muted);
   font-weight: 600;
   padding: 0 6px;
+}
+
+.country-legend {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.country-badges {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.country-toolbar {
+  display: grid;
+  gap: 8px;
+}
+
+.country-toolbar input[type="search"] {
+  width: 100%;
+}
+
+.continent-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.continent-filter {
+  border: 1px solid var(--stroke);
+  background: #ffffff;
+  border-radius: 999px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.continent-filter.is-active {
+  background: rgba(47, 128, 237, 0.08);
+  border-color: rgba(47, 128, 237, 0.35);
+  color: var(--text);
+}
+
+.continent-filter small {
+  color: var(--muted);
 }
 
 .country-selector {
@@ -409,6 +471,13 @@ label {
   gap: 10px;
   font-weight: 600;
   color: var(--text);
+}
+
+.continent-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .continent-header label {
