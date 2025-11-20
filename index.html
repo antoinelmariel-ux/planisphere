@@ -27,23 +27,14 @@
     <main>
       <section class="map-panel">
         <div class="map-shell">
+          <div class="map-controls" aria-label="Contrôles de la carte">
+            <button class="ghost" id="resetZoom">Vue monde</button>
+            <button class="primary" id="zoomEurope">Zoom Europe</button>
+          </div>
           <div id="map" class="map"></div>
           <div id="legend" class="legend"></div>
           <div id="tooltip" class="tooltip" role="tooltip"></div>
           <div id="resourceNotice" class="resource-notice" aria-live="polite"></div>
-        </div>
-      </section>
-
-      <section class="insights" id="insightsPanel">
-        <header>
-          <div>
-            <p class="eyebrow">Contexte</p>
-            <h2 id="insightTitle">Sélectionnez une thématique</h2>
-          </div>
-          <div class="pill" id="themeMode"></div>
-        </header>
-        <div class="insight-body" id="insightBody">
-          <p>Choisissez une thématique dans le menu burger pour voir les informations clés sur vos pays.</p>
         </div>
       </section>
     </main>
@@ -79,7 +70,7 @@
   </aside>
 
   <footer class="footer">
-    <p>Planisphère compliance – version <strong id="versionLabel">0.3.4</strong></p>
+    <p>Planisphère compliance – version <strong id="versionLabel">0.3.5</strong></p>
   </footer>
 
   <script src="assets/js/app.js"></script>
