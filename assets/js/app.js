@@ -1,4 +1,4 @@
-const APP_VERSION = "0.4.3";
+const APP_VERSION = "0.4.4";
 const WORLD_SVG_PATH = "assets/world.svg";
 const DEFAULT_MEDICINES = [
   "Antibiotiques",
@@ -1868,6 +1868,49 @@ function exportThemes() {
   URL.revokeObjectURL(url);
 }
 
+function setupBackOfficeTabs() {
+  const tabs = Array.from(document.querySelectorAll(".back-office__nav [role='tab']"));
+  const panels = Array.from(document.querySelectorAll(".back-office__panel"));
+  if (!tabs.length || !panels.length) return;
+
+  const activate = (panelId) => {
+    tabs.forEach((tab) => {
+      const isActive = tab.getAttribute("aria-controls") === panelId;
+      tab.classList.toggle("is-active", isActive);
+      tab.setAttribute("aria-selected", isActive.toString());
+      tab.tabIndex = isActive ? "0" : "-1";
+    });
+
+    panels.forEach((panel) => {
+      const isActive = panel.id === panelId;
+      panel.classList.toggle("is-active", isActive);
+      if (isActive) {
+        panel.removeAttribute("hidden");
+        panel.setAttribute("aria-hidden", "false");
+      } else {
+        panel.setAttribute("hidden", "true");
+        panel.setAttribute("aria-hidden", "true");
+      }
+    });
+  };
+
+  const initialTab = tabs.find((tab) => tab.classList.contains("is-active")) || tabs[0];
+  if (initialTab) {
+    activate(initialTab.getAttribute("aria-controls"));
+  }
+
+  tabs.forEach((tab) => {
+    const targetId = tab.getAttribute("aria-controls");
+    tab.addEventListener("click", () => activate(targetId));
+    tab.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        activate(targetId);
+      }
+    });
+  });
+}
+
 function setupBackOffice() {
   const toggle = document.getElementById("toggleBackOffice");
   const close = document.getElementById("closeBackOffice");
@@ -1892,6 +1935,7 @@ function setupBackOffice() {
   exportButton.addEventListener("click", exportThemes);
   setupMedicineCatalog();
   setupPriorityCatalog();
+  setupBackOfficeTabs();
 }
 
 function applyViewBox(value) {

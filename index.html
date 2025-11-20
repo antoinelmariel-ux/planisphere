@@ -48,62 +48,86 @@
       </div>
       <button class="ghost" id="closeBackOffice">Fermer</button>
     </div>
+    <div class="back-office__nav" role="tablist" aria-label="Navigation du back-office">
+      <button class="tab is-active" id="tab-settings" role="tab" aria-selected="true" aria-controls="panel-settings">
+        Paramétrage thématiques &amp; pays
+      </button>
+      <button class="tab" id="tab-data" role="tab" aria-selected="false" aria-controls="panel-data">
+        Données dynamiques
+      </button>
+      <button class="tab" id="tab-catalogs" role="tab" aria-selected="false" aria-controls="panel-catalogs">
+        Catalogues transverses
+      </button>
+    </div>
+
     <form id="backOfficeForm" class="back-office__form">
-      <label>
-        Thématique
-        <select id="themeSelect"></select>
-      </label>
+      <section
+        id="panel-settings"
+        class="back-office__panel is-active"
+        role="tabpanel"
+        aria-labelledby="tab-settings"
+      >
+        <label>
+          Thématique
+          <select id="themeSelect"></select>
+        </label>
 
-      <fieldset class="country-fieldset">
-        <legend>Pays (sélection par continent)</legend>
-        <div id="countrySelection" class="country-selector"></div>
-      </fieldset>
+        <fieldset class="country-fieldset">
+          <legend>Pays (sélection par continent)</legend>
+          <div id="countrySelection" class="country-selector"></div>
+        </fieldset>
 
-      <div id="dynamicFields"></div>
+        <p class="helper">Les modifications sont conservées dans votre navigateur (localStorage) pour un usage 100% local.</p>
+      </section>
 
-      <div class="form-actions">
-        <button type="button" id="resetData" class="ghost">Réinitialiser les données par défaut</button>
-        <div class="form-actions__group">
-          <button type="button" id="exportData" class="ghost">Exporter les données</button>
-          <button type="submit" class="primary">Enregistrer</button>
+      <section id="panel-data" class="back-office__panel" role="tabpanel" aria-labelledby="tab-data" aria-hidden="true">
+        <div id="dynamicFields"></div>
+
+        <div class="form-actions">
+          <button type="button" id="resetData" class="ghost">Réinitialiser les données par défaut</button>
+          <div class="form-actions__group">
+            <button type="button" id="exportData" class="ghost">Exporter les données</button>
+            <button type="submit" class="primary">Enregistrer</button>
+          </div>
         </div>
-      </div>
+      </section>
     </form>
-    <p class="helper">Les modifications sont conservées dans votre navigateur (localStorage) pour un usage 100% local.</p>
 
-    <section class="back-office__section" aria-labelledby="medicineTitle">
-      <header class="back-office__section-header">
-        <div>
-          <p class="eyebrow">Catalogue</p>
-          <h4 id="medicineTitle">Médicaments</h4>
+    <section id="panel-catalogs" class="back-office__panel" role="tabpanel" aria-labelledby="tab-catalogs" aria-hidden="true">
+      <div class="back-office__section" aria-labelledby="medicineTitle">
+        <header class="back-office__section-header">
+          <div>
+            <p class="eyebrow">Catalogue</p>
+            <h4 id="medicineTitle">Médicaments</h4>
+          </div>
+          <p class="helper">Liste globale des produits pouvant être proposés par les entités.</p>
+        </header>
+        <div id="medicineList" class="pill-list" aria-live="polite"></div>
+        <div class="medicine-actions">
+          <input id="medicineInput" type="text" placeholder="Ajouter un médicament" aria-label="Nouveau médicament" />
+          <button type="button" id="addMedicine" class="ghost">Ajouter</button>
         </div>
-        <p class="helper">Liste globale des produits pouvant être proposés par les entités.</p>
-      </header>
-      <div id="medicineList" class="pill-list" aria-live="polite"></div>
-      <div class="medicine-actions">
-        <input id="medicineInput" type="text" placeholder="Ajouter un médicament" aria-label="Nouveau médicament" />
-        <button type="button" id="addMedicine" class="ghost">Ajouter</button>
       </div>
-    </section>
 
-    <section class="back-office__section" aria-labelledby="priorityTitle">
-      <header class="back-office__section-header">
-        <div>
-          <p class="eyebrow">Référentiel</p>
-          <h4 id="priorityTitle">Priorités Éthique & Compliance</h4>
+      <div class="back-office__section" aria-labelledby="priorityTitle">
+        <header class="back-office__section-header">
+          <div>
+            <p class="eyebrow">Référentiel</p>
+            <h4 id="priorityTitle">Priorités Éthique &amp; Compliance</h4>
+          </div>
+          <p class="helper">Liste utilisée pour les fiches Filiale / Distributeur.</p>
+        </header>
+        <div id="priorityList" class="pill-list" aria-live="polite"></div>
+        <div class="medicine-actions">
+          <input id="priorityInput" type="text" placeholder="Ajouter une priorité" aria-label="Nouvelle priorité" />
+          <button type="button" id="addPriority" class="ghost">Ajouter</button>
         </div>
-        <p class="helper">Liste utilisée pour les fiches Filiale / Distributeur.</p>
-      </header>
-      <div id="priorityList" class="pill-list" aria-live="polite"></div>
-      <div class="medicine-actions">
-        <input id="priorityInput" type="text" placeholder="Ajouter une priorité" aria-label="Nouvelle priorité" />
-        <button type="button" id="addPriority" class="ghost">Ajouter</button>
       </div>
     </section>
   </aside>
 
   <footer class="footer">
-    <p>Planisphère compliance – version <strong id="versionLabel">0.4.3</strong></p>
+    <p>Planisphère compliance – version <strong id="versionLabel">0.4.4</strong></p>
   </footer>
 
   <script src="assets/js/app.js"></script>
