@@ -85,10 +85,25 @@
         <button type="button" id="addMedicine" class="ghost">Ajouter</button>
       </div>
     </section>
+
+    <section class="back-office__section" aria-labelledby="priorityTitle">
+      <header class="back-office__section-header">
+        <div>
+          <p class="eyebrow">Référentiel</p>
+          <h4 id="priorityTitle">Priorités Éthique & Compliance</h4>
+        </div>
+        <p class="helper">Liste utilisée pour les fiches Filiale / Distributeur.</p>
+      </header>
+      <div id="priorityList" class="pill-list" aria-live="polite"></div>
+      <div class="medicine-actions">
+        <input id="priorityInput" type="text" placeholder="Ajouter une priorité" aria-label="Nouvelle priorité" />
+        <button type="button" id="addPriority" class="ghost">Ajouter</button>
+      </div>
+    </section>
   </aside>
 
   <footer class="footer">
-    <p>Planisphère compliance – version <strong id="versionLabel">0.4.1</strong></p>
+    <p>Planisphère compliance – version <strong id="versionLabel">0.4.2</strong></p>
   </footer>
 
   <script src="assets/js/app.js"></script>
