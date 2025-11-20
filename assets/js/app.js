@@ -1,4 +1,4 @@
-const APP_VERSION = "0.4.0";
+const APP_VERSION = "0.4.1";
 const WORLD_SVG_PATH = "assets/world.svg";
 const DEFAULT_MEDICINES = [
   "Antibiotiques",
@@ -687,6 +687,10 @@ function selectTheme(key) {
   document.querySelectorAll(".theme-menu button").forEach((btn) =>
     btn.classList.toggle("is-active", btn.id === `btn-${key}`)
   );
+  const themeMenu = document.getElementById("themeMenu");
+  if (themeMenu) {
+    themeMenu.classList.remove("is-open");
+  }
   refreshMap();
   buildLegend();
 }
