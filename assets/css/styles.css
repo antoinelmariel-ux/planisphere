@@ -513,6 +513,81 @@ textarea {
   flex: 1;
 }
 
+.country-chip-selector {
+  display: grid;
+  gap: 8px;
+}
+
+.tag-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #e5edff;
+  color: var(--text);
+  padding: 8px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--stroke);
+}
+
+.tag button {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--muted);
+  font-weight: bold;
+}
+
+.pill-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pill-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.pill-toggle input {
+  accent-color: var(--accent);
+}
+
+.conditional-field {
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+  padding: 12px;
+  background: #ffffff;
+  display: grid;
+  gap: 10px;
+}
+
+.priority-selector {
+  margin-top: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.inline-label {
+  display: grid;
+  gap: 6px;
+}
+
+.stack {
+  display: grid;
+  gap: 8px;
+}
+
 .inline-fields {
   display: grid;
   grid-template-columns: 2fr 1fr;

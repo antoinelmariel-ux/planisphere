@@ -1,4 +1,4 @@
-const APP_VERSION = "0.4.1";
+const APP_VERSION = "0.4.2";
 const WORLD_SVG_PATH = "assets/world.svg";
 const DEFAULT_MEDICINES = [
   "Antibiotiques",
@@ -6,6 +6,13 @@ const DEFAULT_MEDICINES = [
   "Vaccins",
   "Antiviraux",
   "Anti-inflammatoires"
+];
+const DEFAULT_PRIORITIES = [
+  "Protection des données",
+  "Conformité Anti-corruption",
+  "Éthique fournisseurs",
+  "Sécurité patient",
+  "Conformité promotion"
 ];
 const COUNTRY_ID_MAPPINGS = {
   US: "US",
@@ -532,6 +539,7 @@ const state = {
   currentTheme: "countryProfile",
   themes: loadThemes(),
   medicines: loadMedicines(),
+  priorities: loadPriorities(),
   map: null,
   countryLayers: {},
   defaultViewBox: VIEWBOX_FALLBACK
@@ -611,8 +619,37 @@ function persistMedicines() {
   }
 }
 
-function extractRevenueValue(profile) {
-  const candidate = profile?.countryRevenue ?? profile?.revenue;
+function loadPriorities() {
+  try {
+    const cached = localStorage.getItem("priorityCatalog");
+    if (cached) {
+      return JSON.parse(cached);
+    }
+  } catch (error) {
+    console.warn("Impossible de charger les priorités", error);
+  }
+  return [...DEFAULT_PRIORITIES];
+}
+
+function persistPriorities() {
+  try {
+    localStorage.setItem("priorityCatalog", JSON.stringify(state.priorities));
+  } catch (error) {
+    console.warn("Impossible de sauvegarder les priorités", error);
+  }
+}
+
+function extractRevenueValue(profile, countryId) {
+  if (!profile) return 0;
+  const mapValue =
+    countryId && profile.countryRevenues
+      ? Number(profile.countryRevenues[countryId])
+      : undefined;
+  const candidate =
+    (Number.isFinite(mapValue) ? mapValue : undefined) ??
+    profile?.countryRevenue ??
+    profile?.revenue ??
+    profile?.globalRevenue;
   const value = typeof candidate === "string" ? parseFloat(candidate) : Number(candidate);
   return Number.isFinite(value) ? value : 0;
 }
@@ -636,9 +673,9 @@ function formatRevenue(value, currency = "M€") {
 
 function sumEntityRevenue(entityName, data = state.themes.countryProfile.data) {
   if (!entityName) return 0;
-  return Object.values(data || {}).reduce((total, profile) => {
+  return Object.entries(data || {}).reduce((total, [countryId, profile]) => {
     if (getProfileEntityKey(profile) !== entityName) return total;
-    const revenue = extractRevenueValue(profile);
+    const revenue = extractRevenueValue(profile, countryId);
     return total + revenue;
   }, 0);
 }
@@ -653,7 +690,7 @@ function computeEntityProjection(entityName, countryRevenue, selectedCountries) 
     const nextValue =
       selectedCountries.includes(countryId) && Number.isFinite(countryRevenue)
         ? countryRevenue
-        : extractRevenueValue(profile);
+        : extractRevenueValue(profile, countryId);
     total += nextValue;
   });
 
@@ -858,18 +895,34 @@ function buildTooltipContent(id, theme) {
   if (theme === state.themes.countryProfile) {
     const currency = getProfileCurrency(value);
     const entityLabel = value.entityName || country.name;
-    const localRevenue = extractRevenueValue(value);
-    const globalRevenue = sumEntityRevenue(entityLabel);
+    const localRevenue = extractRevenueValue(value, id);
+    const globalRevenue = value.globalRevenue ?? sumEntityRevenue(entityLabel);
+    const activities = value.activities?.length
+      ? value.activities.join(" / ")
+      : value.activity || "—";
+    const medicines = Array.isArray(value.medicines) && value.medicines.length
+      ? value.medicines.join(", ")
+      : "—";
+    const priorities = Array.isArray(value.ethicsPriorities) && value.ethicsPriorities.length
+      ? value.ethicsPriorities.join(", ")
+      : "—";
+    const entityType = value.entityType === "distributor" ? "Distributeur" : "Filiale / JV";
+    const contacts = value.contacts || value.complianceContact || value.complianceLead || "—";
+    const manager = value.generalManager || "—";
+    const shareholding = value.shareholding || "100% LFB";
+    const employeeCount = value.employees ?? "—";
     return `<h4>${entityLabel}</h4>
-      <p class="helper">Pays : ${country.name}</p>
+      <p class="helper">${entityType} – ${shareholding}</p>
       <div class="info-grid">
-        <div class="info-card"><div class="eyebrow">Salariés</div><strong>${value.employees}</strong></div>
         <div class="info-card"><div class="eyebrow">CA pays</div><strong>${formatRevenue(localRevenue, currency)}</strong></div>
         <div class="info-card"><div class="eyebrow">CA global entité</div><strong>${formatRevenue(globalRevenue, currency)}</strong></div>
-        <div class="info-card"><div class="eyebrow">Activité</div><span>${value.activity}</span></div>
-        <div class="info-card"><div class="eyebrow">Compliance</div><span>${value.complianceLead}</span></div>
+        <div class="info-card"><div class="eyebrow">Médicaments</div><span>${medicines}</span></div>
+        <div class="info-card"><div class="eyebrow">Activités</div><span>${activities}</span></div>
+        <div class="info-card"><div class="eyebrow">Salariés</div><strong>${employeeCount}</strong></div>
       </div>
-      <p class="helper">Cadre légal : ${value.legal}</p>`;
+      <p class="helper">General Manager : ${manager}</p>
+      <p class="helper">Contacts : ${contacts}</p>
+      <p class="helper">Priorités E&C : ${priorities}</p>`;
   }
   if (theme === state.themes.products) {
     return `<h4>${country.name}</h4><p>Produits : ${value.products.join(", ")}</p>`;
@@ -979,12 +1032,14 @@ function addMedicine(name) {
   state.medicines = [...state.medicines, label].sort((a, b) => a.localeCompare(b));
   persistMedicines();
   buildMedicineCatalog();
+  buildMedicineChoices();
 }
 
 function removeMedicine(name) {
   state.medicines = state.medicines.filter((medicine) => medicine !== name);
   persistMedicines();
   buildMedicineCatalog();
+  buildMedicineChoices();
 }
 
 function setupMedicineCatalog() {
@@ -1007,6 +1062,80 @@ function setupMedicineCatalog() {
   });
 
   buildMedicineCatalog();
+}
+
+function buildPriorityCatalog() {
+  const list = document.getElementById("priorityList");
+  if (!list) return;
+  list.innerHTML = "";
+
+  if (!state.priorities.length) {
+    const empty = document.createElement("p");
+    empty.className = "helper";
+    empty.textContent = "Aucune priorité configurée.";
+    list.appendChild(empty);
+    return;
+  }
+
+  state.priorities.forEach((priority) => {
+    const pill = document.createElement("span");
+    pill.className = "pill";
+    pill.textContent = priority;
+
+    const removeButton = document.createElement("button");
+    removeButton.type = "button";
+    removeButton.setAttribute("aria-label", `Retirer ${priority}`);
+    removeButton.textContent = "×";
+    removeButton.addEventListener("click", () => removePriority(priority));
+
+    pill.appendChild(removeButton);
+    list.appendChild(pill);
+  });
+}
+
+function addPriority(name) {
+  const label = name.trim();
+  if (!label) {
+    alert("Merci d'indiquer une priorité à ajouter");
+    return;
+  }
+  if (state.priorities.includes(label)) {
+    alert("Cette priorité est déjà présente dans la liste");
+    return;
+  }
+  state.priorities = [...state.priorities, label].sort((a, b) => a.localeCompare(b));
+  persistPriorities();
+  buildPriorityCatalog();
+  buildPriorityChoices();
+}
+
+function removePriority(name) {
+  state.priorities = state.priorities.filter((priority) => priority !== name);
+  persistPriorities();
+  buildPriorityCatalog();
+  buildPriorityChoices();
+}
+
+function setupPriorityCatalog() {
+  const input = document.getElementById("priorityInput");
+  const addButton = document.getElementById("addPriority");
+  if (!input || !addButton) return;
+
+  const submit = () => {
+    addPriority(input.value);
+    input.value = "";
+    input.focus();
+  };
+
+  addButton.addEventListener("click", submit);
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      submit();
+    }
+  });
+
+  buildPriorityCatalog();
 }
 
 const LEGEND_COLORS = ["#ef4444", "#f97316", "#6366f1", "#0ea5e9", "#22c55e", "#facc15"];
@@ -1177,6 +1306,13 @@ function buildCategoryField(themeKey, theme) {
 }
 
 function getSelectedCountries() {
+  const tagContainer = document.getElementById("countryTags");
+  if (tagContainer) {
+    const tags = Array.from(tagContainer.querySelectorAll(".tag"));
+    if (tags.length) {
+      return tags.map((tag) => tag.dataset.code);
+    }
+  }
   return Array.from(document.querySelectorAll(".country-checkbox:checked")).map(
     (input) => input.value
   );
@@ -1248,6 +1384,151 @@ function buildCountrySelector() {
   });
 }
 
+function buildSelectablePills(containerId, values, prefix) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.innerHTML = "";
+  values.forEach((value) => {
+    const label = document.createElement("label");
+    label.className = "pill-toggle";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.value = value;
+    checkbox.id = `${prefix}-${value.replace(/\s+/g, "-").toLowerCase()}`;
+
+    const text = document.createElement("span");
+    text.textContent = value;
+
+    label.appendChild(checkbox);
+    label.appendChild(text);
+    container.appendChild(label);
+  });
+}
+
+function getCheckedValues(containerId) {
+  return Array.from(
+    document.querySelectorAll(`#${containerId} input[type="checkbox"]:checked`)
+  ).map((input) => input.value);
+}
+
+function buildPriorityChoices() {
+  buildSelectablePills("priorityChoices", state.priorities, "priority-choice");
+}
+
+function buildMedicineChoices() {
+  buildSelectablePills("subsidiaryMedicines", state.medicines, "subsidiary-medicine");
+  buildSelectablePills("distributorMedicines", state.medicines, "distributor-medicine");
+}
+
+function findCountryByQuery(query) {
+  const normalized = query.trim().toLowerCase();
+  return COUNTRIES.find(
+    (country) =>
+      country.id.toLowerCase() === normalized || country.name.toLowerCase() === normalized
+  );
+}
+
+function renderCountryOptions() {
+  const list = document.getElementById("countryOptions");
+  if (!list) return;
+  list.innerHTML = "";
+  COUNTRIES.forEach((country) => {
+    const option = document.createElement("option");
+    option.value = `${country.name} (${country.id})`;
+    option.dataset.code = country.id;
+    list.appendChild(option);
+  });
+}
+
+function updateCountryTags(selected) {
+  const container = document.getElementById("countryTags");
+  if (!container) return;
+  container.innerHTML = "";
+  selected.forEach((code) => {
+    const country = COUNTRIES.find((item) => item.id === code);
+    if (!country) return;
+    const tag = document.createElement("span");
+    tag.className = "tag";
+    tag.dataset.code = code;
+    tag.textContent = country.name;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = "×";
+    button.setAttribute("aria-label", `Retirer ${country.name}`);
+    button.addEventListener("click", () => {
+      const remaining = getSelectedCountries().filter((item) => item !== code);
+      updateCountryTags(remaining);
+      renderCountryRevenueInputs(remaining);
+      setupEntityRevenuePreview();
+    });
+    tag.appendChild(button);
+    container.appendChild(tag);
+  });
+}
+
+function renderCountryRevenueInputs(selectedCountries) {
+  const container = document.getElementById("countryRevenueList");
+  if (!container) return;
+  const previousValues = {};
+  container.querySelectorAll("input[data-country]").forEach((input) => {
+    previousValues[input.dataset.country] = input.value;
+  });
+  container.innerHTML = "";
+  selectedCountries.forEach((code) => {
+    const country = COUNTRIES.find((c) => c.id === code);
+    const wrapper = document.createElement("label");
+    wrapper.className = "inline-label";
+    wrapper.textContent = `CA – ${country?.name || code}`;
+    const input = document.createElement("input");
+    input.type = "number";
+    input.step = "0.1";
+    input.min = "0";
+    input.dataset.country = code;
+    input.value = previousValues[code] || "";
+    input.addEventListener("input", setupEntityRevenuePreview);
+    wrapper.appendChild(input);
+    container.appendChild(wrapper);
+  });
+}
+
+function setupCountrySearch() {
+  renderCountryOptions();
+  const input = document.getElementById("countrySearch");
+  if (!input) return;
+  const addCountry = () => {
+    const value = input.value;
+    const datalist = document.getElementById("countryOptions");
+    const match = Array.from(datalist?.options || []).find(
+      (option) => option.value.toLowerCase() === value.trim().toLowerCase()
+    );
+    const country = match
+      ? COUNTRIES.find((c) => c.id === match.dataset.code)
+      : findCountryByQuery(value.replace(/\s+\(.+\)/, ""));
+    if (!country) {
+      alert("Pays introuvable, merci de choisir dans la liste.");
+      return;
+    }
+    const selected = new Set(getSelectedCountries());
+    selected.add(country.id);
+    input.value = "";
+    updateCountryTags(Array.from(selected));
+    renderCountryRevenueInputs(Array.from(selected));
+    setupEntityRevenuePreview();
+  };
+
+  input.addEventListener("change", addCountry);
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      addCountry();
+    }
+  });
+
+  updateCountryTags(getSelectedCountries());
+  renderCountryRevenueInputs(getSelectedCountries());
+}
+
 function renderDynamicFields() {
   const themeKey = document.getElementById("themeSelect").value;
   const theme = state.themes[themeKey];
@@ -1257,16 +1538,58 @@ function renderDynamicFields() {
   if (themeKey === "countryProfile") {
     dynamic.innerHTML = `
       <label>Nom de l'entité<input id="field-entityName" type="text" /></label>
-      <label>Nombre de salariés<input id="field-employees" type="number" min="0" /></label>
-      <div class="inline-fields">
-        <label>Chiffre d'affaires par pays<input id="field-countryRevenue" type="number" min="0" step="0.1" /></label>
-        <label>Unité<input id="field-revenueCurrency" type="text" value="M€" /></label>
+      <label>Type d'entité
+        <select id="field-entityType">
+          <option value="subsidiary">Filiale / JV</option>
+          <option value="distributor">Distributeur</option>
+        </select>
+      </label>
+      <div class="inline-fields" data-entity="subsidiary">
+        <label>General Manager<input id="field-generalManager" type="text" /></label>
+        <label>Contact Compliance<input id="field-complianceContact" type="text" /></label>
       </div>
-      <label>Typologie d'activité<input id="field-activity" type="text" /></label>
-      <label>Personne en charge / Sponsor<input id="field-complianceLead" type="text" /></label>
-      <label>Legal Framework<textarea id="field-legal"></textarea></label>
-      <p class="helper">CA global estimé pour l'entité : <strong id="field-entityTotal">—</strong></p>
+      <label data-entity="subsidiary">Actionnariat<input id="field-shareholding" type="text" value="100% LFB" /></label>
+      <label data-entity="subsidiary">Nombre de salariés<input id="field-employees" type="number" min="0" /></label>
+      <div class="country-chip-selector">
+        <label for="countrySearch">Pays (recherche)</label>
+        <input id="countrySearch" type="search" list="countryOptions" placeholder="Rechercher un pays" />
+        <datalist id="countryOptions"></datalist>
+        <div id="countryTags" class="tag-container" aria-live="polite"></div>
+      </div>
+      <fieldset id="activityGroup" class="stack" data-entity="subsidiary">
+        <legend>Activités</legend>
+        <label class="pill-toggle"><input type="checkbox" name="activity" value="collecte" />Collecte</label>
+        <label class="pill-toggle"><input type="checkbox" name="activity" value="commercial" />Commercialisation</label>
+      </fieldset>
+      <div id="commercialFields" class="conditional-field" data-entity="subsidiary">
+        <p class="eyebrow">Commercialisation</p>
+        <p class="helper">Sélectionnez les médicaments concernés.</p>
+        <div id="subsidiaryMedicines" class="pill-picker"></div>
+        <div class="inline-fields">
+          <label>Chiffre d'affaires global<input id="field-globalRevenue" type="number" min="0" step="0.1" /></label>
+          <label>Unité<input id="field-revenueCurrency" type="text" value="M€" /></label>
+        </div>
+        <div id="countryRevenueList" class="stack"></div>
+        <p class="helper">CA global estimé pour l'entité : <strong id="field-entityTotal">—</strong></p>
+      </div>
+      <div id="distributorFields" class="conditional-field" data-entity="distributor">
+        <p class="helper">Informations spécifiques distributeur</p>
+        <div id="distributorMedicines" class="pill-picker"></div>
+        <label>Contacts<textarea id="field-contacts"></textarea></label>
+        <div class="inline-fields">
+          <label>Chiffre d'affaires<input id="field-distributorRevenue" type="number" min="0" step="0.1" /></label>
+          <label>Unité<input id="field-distributorCurrency" type="text" value="M€" /></label>
+        </div>
+      </div>
+      <div class="priority-selector">
+        <p class="eyebrow">Priorités Éthique & Compliance</p>
+        <div id="priorityChoices" class="pill-picker"></div>
+      </div>
     `;
+    setupCountrySearch();
+    buildMedicineChoices();
+    buildPriorityChoices();
+    setupActivityToggles();
     setupEntityRevenuePreview();
   } else if (theme.mode === "numeric") {
     dynamic.innerHTML = `<label>Valeur numérique<input id="field-numeric" type="number" step="0.1" /></label>`;
@@ -1281,34 +1604,117 @@ function renderDynamicFields() {
   }
 }
 
+function isCommercializationSelected() {
+  const toggle = document.querySelector("input[name='activity'][value='commercial']");
+  return toggle?.checked;
+}
+
+function toggleCommercialFields() {
+  const block = document.getElementById("commercialFields");
+  const entityType = document.getElementById("field-entityType")?.value || "subsidiary";
+  if (!block) return;
+  block.style.display = entityType === "subsidiary" && isCommercializationSelected() ? "" : "none";
+}
+
+function toggleEntityTypeFields() {
+  const type = document.getElementById("field-entityType")?.value || "subsidiary";
+  document.querySelectorAll("[data-entity]").forEach((node) => {
+    node.style.display = node.dataset.entity === type ? "" : "none";
+  });
+  const activityGroup = document.getElementById("activityGroup");
+  if (activityGroup) {
+    activityGroup.style.display = type === "subsidiary" ? "" : "none";
+  }
+  toggleCommercialFields();
+}
+
+function setupActivityToggles() {
+  const activities = document.querySelectorAll("input[name='activity']");
+  activities.forEach((input) => {
+    input.addEventListener("change", () => {
+      toggleCommercialFields();
+      renderCountryRevenueInputs(getSelectedCountries());
+      setupEntityRevenuePreview();
+    });
+  });
+  const typeSelect = document.getElementById("field-entityType");
+  if (typeSelect) {
+    typeSelect.addEventListener("change", () => {
+      toggleEntityTypeFields();
+      setupEntityRevenuePreview();
+    });
+  }
+  toggleEntityTypeFields();
+}
+
 function setupEntityRevenuePreview() {
   const entityInput = document.getElementById("field-entityName");
-  const revenueInput = document.getElementById("field-countryRevenue");
-  const currencyInput = document.getElementById("field-revenueCurrency");
   const totalLabel = document.getElementById("field-entityTotal");
-
-  if (!entityInput || !revenueInput || !totalLabel || !currencyInput) return;
+  const currencyInput =
+    document.getElementById("field-revenueCurrency") ||
+    document.getElementById("field-distributorCurrency");
+  if (!totalLabel || !entityInput) return;
 
   const updateTotal = () => {
+    const selectedCountries = getSelectedCountries();
     const entityName = entityInput.value.trim();
-    const revenue = Number(revenueInput.value);
-    if (!entityName || !Number.isFinite(revenue)) {
+    const currency = currencyInput?.value || "M€";
+    if (!entityName) {
       totalLabel.textContent = "—";
       return;
     }
-    const total = computeEntityProjection(entityName, revenue, getSelectedCountries());
-    totalLabel.textContent = formatRevenue(total, currencyInput.value || "M€");
+    const perCountryValues = {};
+    document.querySelectorAll("#countryRevenueList input[data-country]").forEach((input) => {
+      const numeric = Number(input.value);
+      if (Number.isFinite(numeric)) {
+        perCountryValues[input.dataset.country] = numeric;
+      }
+    });
+    const sumPerCountry = Object.values(perCountryValues).reduce((sum, val) => sum + val, 0);
+    const globalRevenueInput = Number(document.getElementById("field-globalRevenue")?.value);
+    const distributorRevenueInput = Number(
+      document.getElementById("field-distributorRevenue")?.value
+    );
+    if (sumPerCountry > 0) {
+      totalLabel.textContent = formatRevenue(sumPerCountry, currency);
+      return;
+    }
+    if (Number.isFinite(globalRevenueInput)) {
+      totalLabel.textContent = formatRevenue(globalRevenueInput, currency);
+      return;
+    }
+    if (Number.isFinite(distributorRevenueInput)) {
+      totalLabel.textContent = formatRevenue(distributorRevenueInput, currency);
+      return;
+    }
+    const base = computeEntityProjection(entityName, 0, selectedCountries);
+    totalLabel.textContent = base ? formatRevenue(base, currency) : "—";
   };
 
-  [entityInput, revenueInput, currencyInput].forEach((input) => {
-    input.addEventListener("input", updateTotal);
-  });
+  const watchedInputs = [
+    entityInput,
+    currencyInput,
+    document.getElementById("field-globalRevenue"),
+    document.getElementById("field-distributorRevenue")
+  ].filter(Boolean);
 
-  document.querySelectorAll(".country-checkbox").forEach((box) => {
-    box.addEventListener("change", updateTotal);
-  });
+  watchedInputs.forEach((input) => input.addEventListener("input", updateTotal));
+  document
+    .querySelectorAll("#countryRevenueList input[data-country]")
+    .forEach((input) => input.addEventListener("input", updateTotal));
 
   updateTotal();
+}
+
+function readCountryRevenues() {
+  const map = {};
+  document.querySelectorAll("#countryRevenueList input[data-country]").forEach((input) => {
+    const value = Number(input.value);
+    if (Number.isFinite(value)) {
+      map[input.dataset.country] = value;
+    }
+  });
+  return map;
 }
 
 function handleBackOfficeSubmit(e) {
@@ -1316,9 +1722,6 @@ function handleBackOfficeSubmit(e) {
   const themeKey = document.getElementById("themeSelect").value;
   const selectedCountries = getSelectedCountries();
   const theme = state.themes[themeKey];
-  let entityName;
-  let countryRevenue;
-  let revenueCurrency;
 
   if (!selectedCountries.length) {
     alert("Merci de sélectionner au moins un pays");
@@ -1326,49 +1729,108 @@ function handleBackOfficeSubmit(e) {
   }
 
   if (themeKey === "countryProfile") {
-    entityName = document.getElementById("field-entityName").value.trim();
-    countryRevenue = Number(document.getElementById("field-countryRevenue").value);
-    revenueCurrency = document.getElementById("field-revenueCurrency").value.trim() || "M€";
+    const entityName = document.getElementById("field-entityName").value.trim();
+    const entityType = document.getElementById("field-entityType")?.value || "subsidiary";
+    const shareholding =
+      document.getElementById("field-shareholding")?.value.trim() || "100% LFB";
+    const generalManager = document.getElementById("field-generalManager")?.value.trim() || "";
+    const complianceContact =
+      document.getElementById("field-complianceContact")?.value.trim() || "";
+    const contacts = document.getElementById("field-contacts")?.value.trim() || "";
+    const employees = Number(document.getElementById("field-employees")?.value || 0);
+    const activities =
+      entityType === "subsidiary" ? getCheckedValues("activityGroup") : ["Commercialisation"];
+    const priorities = getCheckedValues("priorityChoices");
+    const medicines =
+      entityType === "subsidiary"
+        ? getCheckedValues("subsidiaryMedicines")
+        : getCheckedValues("distributorMedicines");
+    const isCommercial = entityType === "subsidiary" && isCommercializationSelected();
+    const revenueCurrency =
+      (isCommercial
+        ? document.getElementById("field-revenueCurrency")
+        : document.getElementById("field-distributorCurrency"))?.value.trim() || "M€";
+    const countryRevenueMap = isCommercial ? readCountryRevenues() : {};
+    const globalRevenueRaw = isCommercial
+      ? Number(document.getElementById("field-globalRevenue")?.value)
+      : Number(document.getElementById("field-distributorRevenue")?.value);
+    const perCountryTotal = Object.values(countryRevenueMap).reduce(
+      (sum, value) => sum + Number(value || 0),
+      0
+    );
+    const globalRevenue = Number.isFinite(globalRevenueRaw)
+      ? globalRevenueRaw
+      : perCountryTotal || undefined;
 
     if (!entityName) {
       alert("Merci de renseigner le nom de l'entité");
       return;
     }
 
-    if (!Number.isFinite(countryRevenue)) {
-      alert("Merci de saisir un chiffre d'affaires par pays valide");
+    if (entityType === "subsidiary" && !activities.length) {
+      alert("Merci de sélectionner au moins une activité");
       return;
     }
-  }
 
-  selectedCountries.forEach((countryId) => {
-    if (themeKey === "countryProfile") {
+    if (entityType === "subsidiary" && isCommercial) {
+      if (!Number.isFinite(globalRevenueRaw) && !perCountryTotal) {
+        alert("Merci de saisir un chiffre d'affaires (global ou par pays)");
+        return;
+      }
+    }
+
+    if (entityType === "distributor" && !Number.isFinite(globalRevenueRaw)) {
+      alert("Merci de renseigner le chiffre d'affaires du distributeur");
+      return;
+    }
+
+    selectedCountries.forEach((countryId) => {
+      const fallbackRevenue =
+        Number.isFinite(globalRevenueRaw) && selectedCountries.length
+          ? globalRevenueRaw / selectedCountries.length
+          : undefined;
+      const countryRevenue = Number.isFinite(countryRevenueMap[countryId])
+        ? Number(countryRevenueMap[countryId])
+        : fallbackRevenue;
       theme.data[countryId] = {
         entityName,
-        employees: Number(document.getElementById("field-employees").value || 0),
+        entityType,
+        shareholding,
+        generalManager,
+        complianceContact,
+        contacts,
+        employees: entityType === "subsidiary" ? employees : undefined,
+        activities,
+        medicines,
+        globalRevenue,
+        countryRevenues: { ...countryRevenueMap },
         countryRevenue,
         revenueCurrency,
-        activity: document.getElementById("field-activity").value || "",
         country: COUNTRIES.find((c) => c.id === countryId)?.name || countryId,
-        complianceLead: document.getElementById("field-complianceLead").value || "",
-        legal: document.getElementById("field-legal").value || ""
+        ethicsPriorities: priorities
       };
-    } else if (theme.mode === "numeric") {
-      const val = Number(document.getElementById("field-numeric").value);
-      if (!Number.isFinite(val)) return alert("Merci de saisir une valeur numérique valide");
+    });
+  } else if (theme.mode === "numeric") {
+    const val = Number(document.getElementById("field-numeric").value);
+    if (!Number.isFinite(val)) return alert("Merci de saisir une valeur numérique valide");
+    selectedCountries.forEach((countryId) => {
       theme.data[countryId] = val;
-    } else if (themeKey === "products") {
-      const raw = document.getElementById("field-products").value;
+    });
+  } else if (themeKey === "products") {
+    const raw = document.getElementById("field-products").value;
+    selectedCountries.forEach((countryId) => {
       theme.data[countryId] = { products: raw.split(",").map((p) => p.trim()).filter(Boolean) };
-    } else if (theme.mode === "category") {
-      const categoryField = document.getElementById("field-category");
-      if (!categoryField) {
-        return alert("Merci d'ajouter au moins une liste pour continuer");
-      }
-      const category = categoryField.value;
-      theme.data[countryId] = category;
+    });
+  } else if (theme.mode === "category") {
+    const categoryField = document.getElementById("field-category");
+    if (!categoryField) {
+      return alert("Merci d'ajouter au moins une liste pour continuer");
     }
-  });
+    const category = categoryField.value;
+    selectedCountries.forEach((countryId) => {
+      theme.data[countryId] = category;
+    });
+  }
 
   state.themes = { ...state.themes, [themeKey]: { ...theme, data: { ...theme.data } } };
   persistThemes();
@@ -1380,7 +1842,8 @@ function exportThemes() {
     version: APP_VERSION,
     exportedAt: new Date().toISOString(),
     themes: state.themes,
-    medicines: state.medicines
+    medicines: state.medicines,
+    priorities: state.priorities
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -1401,16 +1864,20 @@ function setupBackOffice() {
   document.getElementById("resetData").addEventListener("click", () => {
     state.themes = cloneThemes(DEFAULT_THEMES);
     state.medicines = [...DEFAULT_MEDICINES];
+    state.priorities = [...DEFAULT_PRIORITIES];
     persistThemes();
     persistMedicines();
+    persistPriorities();
     buildMenu();
     buildBackOffice();
     buildMedicineCatalog();
+    buildPriorityCatalog();
     selectTheme(state.currentTheme);
   });
   const exportButton = document.getElementById("exportData");
   exportButton.addEventListener("click", exportThemes);
   setupMedicineCatalog();
+  setupPriorityCatalog();
 }
 
 function applyViewBox(value) {
