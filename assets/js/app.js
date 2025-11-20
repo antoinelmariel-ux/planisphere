@@ -1,5 +1,12 @@
-const APP_VERSION = "0.3.9";
+const APP_VERSION = "0.4.0";
 const WORLD_SVG_PATH = "assets/world.svg";
+const DEFAULT_MEDICINES = [
+  "Antibiotiques",
+  "Antalgiques",
+  "Vaccins",
+  "Antiviraux",
+  "Anti-inflammatoires"
+];
 const COUNTRY_ID_MAPPINGS = {
   US: "US",
   CA: "CA",
@@ -270,80 +277,100 @@ const DEFAULT_THEMES = {
     description: "Carte des fiches pays avec les données sociales, business et compliance.",
     data: {
       FR: {
+        entityName: "Groupe Europe Ouest",
         employees: 1200,
-        revenue: "820 M€",
+        countryRevenue: 820,
+        revenueCurrency: "M€",
         activity: "Siège, promotion et collecte",
         country: "France",
         complianceLead: "Jeanne Durand (Sponsor : CFO Groupe)",
         legal: "Protection données, anti-corruption, concurrence"
       },
       US: {
+        entityName: "Digital Americas",
         employees: 480,
-        revenue: "410 M$",
+        countryRevenue: 410,
+        revenueCurrency: "M$",
         activity: "Collecte et distribution digitale",
         country: "États-Unis",
         complianceLead: "Elena Walsh (Sponsor : CEO US)",
         legal: "FCPA, privacy state laws, export control"
       },
       BR: {
+        entityName: "LatAm Sud",
         employees: 220,
-        revenue: "125 M$",
+        countryRevenue: 125,
+        revenueCurrency: "M$",
         activity: "Promotion et collecte",
         country: "Brésil",
         complianceLead: "Paulo Mendes (Sponsor : COO LatAm)",
         legal: "LGPD, anti-corruption, concurrence"
       },
       NG: {
+        entityName: "Africa Growth",
         employees: 160,
-        revenue: "65 M$",
+        countryRevenue: 65,
+        revenueCurrency: "M$",
         activity: "Collecte et distribution locale",
         country: "Nigéria",
         complianceLead: "Adaeze Okafor (Sponsor : Area Manager 2)",
         legal: "Donnees, sanctions locales, diligence tiers"
       },
       IN: {
+        entityName: "APAC Tech",
         employees: 350,
-        revenue: "190 M$",
+        countryRevenue: 190,
+        revenueCurrency: "M$",
         activity: "Promotion & collecte",
         country: "Inde",
         complianceLead: "Amit Sharma (Sponsor : CTO Groupe)",
         legal: "IT Rules, prévention fraude, concurrence"
       },
       CA: {
+        entityName: "Digital Americas",
         employees: 260,
-        revenue: "220 M$",
+        countryRevenue: 220,
+        revenueCurrency: "M$",
         activity: "Distribution et support régional",
         country: "Canada",
         complianceLead: "Sophie Tremblay (Sponsor : CRO Amériques)",
         legal: "LPRPDE, lutte anticorruption, obligations export"
       },
       DE: {
+        entityName: "Groupe Europe Ouest",
         employees: 310,
-        revenue: "275 M€",
+        countryRevenue: 275,
+        revenueCurrency: "M€",
         activity: "Promotion et opérations industrielles",
         country: "Allemagne",
         complianceLead: "Karl Hoffmann (Sponsor : COO Europe)",
         legal: "BAFA export control, concurrence, RGPD"
       },
       ES: {
+        entityName: "Europe Sud",
         employees: 140,
-        revenue: "95 M€",
+        countryRevenue: 95,
+        revenueCurrency: "M€",
         activity: "Promotion & collecte",
         country: "Espagne",
         complianceLead: "Lucía Ramos (Sponsor : Directeur Europe Sud)",
         legal: "RGPD, Sapin II local, obligations CNMC"
       },
       AE: {
+        entityName: "Middle East Hub",
         employees: 120,
-        revenue: "70 M$",
+        countryRevenue: 70,
+        revenueCurrency: "M$",
         activity: "Hub régional et support partenaires",
         country: "Émirats arabes unis",
         complianceLead: "Yara Al Nahyan (Sponsor : Area Manager 2)",
         legal: "Lutte anti-blanchiment, obligations Emirats, données sensibles"
       },
       AU: {
+        entityName: "APAC Tech",
         employees: 150,
-        revenue: "110 M$",
+        countryRevenue: 110,
+        revenueCurrency: "M$",
         activity: "Distribution, support et R&D locale",
         country: "Australie",
         complianceLead: "Oliver Grant (Sponsor : CTO APAC)",
@@ -504,6 +531,7 @@ const EUROPE_VIEWBOX = "880 40 420 520";
 const state = {
   currentTheme: "countryProfile",
   themes: loadThemes(),
+  medicines: loadMedicines(),
   map: null,
   countryLayers: {},
   defaultViewBox: VIEWBOX_FALLBACK
@@ -561,6 +589,83 @@ function persistThemes() {
   } catch (error) {
     console.warn("Impossible de sauvegarder", error);
   }
+}
+
+function loadMedicines() {
+  try {
+    const cached = localStorage.getItem("medicineCatalog");
+    if (cached) {
+      return JSON.parse(cached);
+    }
+  } catch (error) {
+    console.warn("Impossible de charger les médicaments", error);
+  }
+  return [...DEFAULT_MEDICINES];
+}
+
+function persistMedicines() {
+  try {
+    localStorage.setItem("medicineCatalog", JSON.stringify(state.medicines));
+  } catch (error) {
+    console.warn("Impossible de sauvegarder les médicaments", error);
+  }
+}
+
+function extractRevenueValue(profile) {
+  const candidate = profile?.countryRevenue ?? profile?.revenue;
+  const value = typeof candidate === "string" ? parseFloat(candidate) : Number(candidate);
+  return Number.isFinite(value) ? value : 0;
+}
+
+function getProfileEntityKey(profile) {
+  if (!profile) return "";
+  return profile.entityName || profile.country || "";
+}
+
+function getProfileCurrency(profile) {
+  if (!profile) return "M€";
+  if (profile.revenueCurrency) return profile.revenueCurrency;
+  if (typeof profile.revenue === "string" && profile.revenue.includes("$")) return "M$";
+  return "M€";
+}
+
+function formatRevenue(value, currency = "M€") {
+  if (!Number.isFinite(value)) return "N/A";
+  return `${value.toLocaleString("fr-FR")} ${currency}`;
+}
+
+function sumEntityRevenue(entityName, data = state.themes.countryProfile.data) {
+  if (!entityName) return 0;
+  return Object.values(data || {}).reduce((total, profile) => {
+    if (getProfileEntityKey(profile) !== entityName) return total;
+    const revenue = extractRevenueValue(profile);
+    return total + revenue;
+  }, 0);
+}
+
+function computeEntityProjection(entityName, countryRevenue, selectedCountries) {
+  if (!entityName) return 0;
+  const data = state.themes.countryProfile.data || {};
+  let total = 0;
+
+  Object.entries(data).forEach(([countryId, profile]) => {
+    if (getProfileEntityKey(profile) !== entityName) return;
+    const nextValue =
+      selectedCountries.includes(countryId) && Number.isFinite(countryRevenue)
+        ? countryRevenue
+        : extractRevenueValue(profile);
+    total += nextValue;
+  });
+
+  const missingCountries = selectedCountries.filter(
+    (countryId) => !(data[countryId] && data[countryId].entityName === entityName)
+  );
+
+  if (Number.isFinite(countryRevenue) && missingCountries.length) {
+    total += missingCountries.length * countryRevenue;
+  }
+
+  return total;
 }
 
 function buildMenu() {
@@ -747,10 +852,16 @@ function buildTooltipContent(id, theme) {
   const value = theme.data[id];
   if (!value || !country) return "";
   if (theme === state.themes.countryProfile) {
-    return `<h4>${country.name}</h4>
+    const currency = getProfileCurrency(value);
+    const entityLabel = value.entityName || country.name;
+    const localRevenue = extractRevenueValue(value);
+    const globalRevenue = sumEntityRevenue(entityLabel);
+    return `<h4>${entityLabel}</h4>
+      <p class="helper">Pays : ${country.name}</p>
       <div class="info-grid">
         <div class="info-card"><div class="eyebrow">Salariés</div><strong>${value.employees}</strong></div>
-        <div class="info-card"><div class="eyebrow">CA</div><strong>${value.revenue}</strong></div>
+        <div class="info-card"><div class="eyebrow">CA pays</div><strong>${formatRevenue(localRevenue, currency)}</strong></div>
+        <div class="info-card"><div class="eyebrow">CA global entité</div><strong>${formatRevenue(globalRevenue, currency)}</strong></div>
         <div class="info-card"><div class="eyebrow">Activité</div><span>${value.activity}</span></div>
         <div class="info-card"><div class="eyebrow">Compliance</div><span>${value.complianceLead}</span></div>
       </div>
@@ -820,6 +931,78 @@ function buildBackOffice() {
   themeSelect.value = state.currentTheme;
   renderDynamicFields();
   themeSelect.addEventListener("change", renderDynamicFields);
+}
+
+function buildMedicineCatalog() {
+  const list = document.getElementById("medicineList");
+  if (!list) return;
+  list.innerHTML = "";
+
+  if (!state.medicines.length) {
+    const empty = document.createElement("p");
+    empty.className = "helper";
+    empty.textContent = "Aucun médicament référencé.";
+    list.appendChild(empty);
+    return;
+  }
+
+  state.medicines.forEach((medicine) => {
+    const pill = document.createElement("span");
+    pill.className = "pill";
+    pill.textContent = medicine;
+
+    const removeButton = document.createElement("button");
+    removeButton.type = "button";
+    removeButton.setAttribute("aria-label", `Retirer ${medicine}`);
+    removeButton.textContent = "×";
+    removeButton.addEventListener("click", () => removeMedicine(medicine));
+
+    pill.appendChild(removeButton);
+    list.appendChild(pill);
+  });
+}
+
+function addMedicine(name) {
+  const label = name.trim();
+  if (!label) {
+    alert("Merci d'indiquer un médicament à ajouter");
+    return;
+  }
+  if (state.medicines.includes(label)) {
+    alert("Ce médicament est déjà présent dans la liste");
+    return;
+  }
+  state.medicines = [...state.medicines, label].sort((a, b) => a.localeCompare(b));
+  persistMedicines();
+  buildMedicineCatalog();
+}
+
+function removeMedicine(name) {
+  state.medicines = state.medicines.filter((medicine) => medicine !== name);
+  persistMedicines();
+  buildMedicineCatalog();
+}
+
+function setupMedicineCatalog() {
+  const input = document.getElementById("medicineInput");
+  const addButton = document.getElementById("addMedicine");
+  if (!input || !addButton) return;
+
+  const submit = () => {
+    addMedicine(input.value);
+    input.value = "";
+    input.focus();
+  };
+
+  addButton.addEventListener("click", submit);
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      submit();
+    }
+  });
+
+  buildMedicineCatalog();
 }
 
 const LEGEND_COLORS = ["#ef4444", "#f97316", "#6366f1", "#0ea5e9", "#22c55e", "#facc15"];
@@ -1069,12 +1252,18 @@ function renderDynamicFields() {
 
   if (themeKey === "countryProfile") {
     dynamic.innerHTML = `
+      <label>Nom de l'entité<input id="field-entityName" type="text" /></label>
       <label>Nombre de salariés<input id="field-employees" type="number" min="0" /></label>
-      <label>Chiffre d'affaires<input id="field-revenue" type="text" /></label>
+      <div class="inline-fields">
+        <label>Chiffre d'affaires par pays<input id="field-countryRevenue" type="number" min="0" step="0.1" /></label>
+        <label>Unité<input id="field-revenueCurrency" type="text" value="M€" /></label>
+      </div>
       <label>Typologie d'activité<input id="field-activity" type="text" /></label>
       <label>Personne en charge / Sponsor<input id="field-complianceLead" type="text" /></label>
       <label>Legal Framework<textarea id="field-legal"></textarea></label>
+      <p class="helper">CA global estimé pour l'entité : <strong id="field-entityTotal">—</strong></p>
     `;
+    setupEntityRevenuePreview();
   } else if (theme.mode === "numeric") {
     dynamic.innerHTML = `<label>Valeur numérique<input id="field-numeric" type="number" step="0.1" /></label>`;
   } else if (themeKey === "products") {
@@ -1088,22 +1277,73 @@ function renderDynamicFields() {
   }
 }
 
+function setupEntityRevenuePreview() {
+  const entityInput = document.getElementById("field-entityName");
+  const revenueInput = document.getElementById("field-countryRevenue");
+  const currencyInput = document.getElementById("field-revenueCurrency");
+  const totalLabel = document.getElementById("field-entityTotal");
+
+  if (!entityInput || !revenueInput || !totalLabel || !currencyInput) return;
+
+  const updateTotal = () => {
+    const entityName = entityInput.value.trim();
+    const revenue = Number(revenueInput.value);
+    if (!entityName || !Number.isFinite(revenue)) {
+      totalLabel.textContent = "—";
+      return;
+    }
+    const total = computeEntityProjection(entityName, revenue, getSelectedCountries());
+    totalLabel.textContent = formatRevenue(total, currencyInput.value || "M€");
+  };
+
+  [entityInput, revenueInput, currencyInput].forEach((input) => {
+    input.addEventListener("input", updateTotal);
+  });
+
+  document.querySelectorAll(".country-checkbox").forEach((box) => {
+    box.addEventListener("change", updateTotal);
+  });
+
+  updateTotal();
+}
+
 function handleBackOfficeSubmit(e) {
   e.preventDefault();
   const themeKey = document.getElementById("themeSelect").value;
   const selectedCountries = getSelectedCountries();
   const theme = state.themes[themeKey];
+  let entityName;
+  let countryRevenue;
+  let revenueCurrency;
 
   if (!selectedCountries.length) {
     alert("Merci de sélectionner au moins un pays");
     return;
   }
 
+  if (themeKey === "countryProfile") {
+    entityName = document.getElementById("field-entityName").value.trim();
+    countryRevenue = Number(document.getElementById("field-countryRevenue").value);
+    revenueCurrency = document.getElementById("field-revenueCurrency").value.trim() || "M€";
+
+    if (!entityName) {
+      alert("Merci de renseigner le nom de l'entité");
+      return;
+    }
+
+    if (!Number.isFinite(countryRevenue)) {
+      alert("Merci de saisir un chiffre d'affaires par pays valide");
+      return;
+    }
+  }
+
   selectedCountries.forEach((countryId) => {
     if (themeKey === "countryProfile") {
       theme.data[countryId] = {
+        entityName,
         employees: Number(document.getElementById("field-employees").value || 0),
-        revenue: document.getElementById("field-revenue").value || "N/A",
+        countryRevenue,
+        revenueCurrency,
         activity: document.getElementById("field-activity").value || "",
         country: COUNTRIES.find((c) => c.id === countryId)?.name || countryId,
         complianceLead: document.getElementById("field-complianceLead").value || "",
@@ -1135,7 +1375,8 @@ function exportThemes() {
   const payload = {
     version: APP_VERSION,
     exportedAt: new Date().toISOString(),
-    themes: state.themes
+    themes: state.themes,
+    medicines: state.medicines
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -1155,13 +1396,17 @@ function setupBackOffice() {
   document.getElementById("backOfficeForm").addEventListener("submit", handleBackOfficeSubmit);
   document.getElementById("resetData").addEventListener("click", () => {
     state.themes = cloneThemes(DEFAULT_THEMES);
+    state.medicines = [...DEFAULT_MEDICINES];
     persistThemes();
+    persistMedicines();
     buildMenu();
     buildBackOffice();
+    buildMedicineCatalog();
     selectTheme(state.currentTheme);
   });
   const exportButton = document.getElementById("exportData");
   exportButton.addEventListener("click", exportThemes);
+  setupMedicineCatalog();
 }
 
 function applyViewBox(value) {
