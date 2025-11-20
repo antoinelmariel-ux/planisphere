@@ -1,4 +1,4 @@
-const APP_VERSION = "0.14.0";
+const APP_VERSION = "0.15.0";
 const WORLD_SVG_PATH = "assets/world.svg";
 const CORRUPTION_INDEX_PATH = "assets/ICP2024.json";
 
@@ -581,6 +581,30 @@ function setSavingState(isSaving) {
     button.disabled = isSaving;
     button.classList.toggle("is-loading", isSaving);
   });
+}
+
+function updateCategoryColorPreview(value) {
+  const preview = document.getElementById("field-categoryColorValue");
+  if (!preview || !value) return;
+  const formatted = value.toUpperCase();
+  preview.textContent = formatted;
+  preview.style.setProperty("--preview-color", value);
+}
+
+function setCategoryColorValue(value) {
+  const colorInput = document.getElementById("field-categoryColor");
+  if (colorInput && value) {
+    colorInput.value = value;
+  }
+  updateCategoryColorPreview(value || colorInput?.value);
+}
+
+function setupCategoryColorPreview() {
+  const colorInput = document.getElementById("field-categoryColor");
+  if (!colorInput) return;
+  const sync = () => updateCategoryColorPreview(colorInput.value);
+  colorInput.addEventListener("input", sync);
+  sync();
 }
 
 function setupChangeTracking() {
@@ -2247,13 +2271,17 @@ function renderDynamicFields() {
     creationPanel.id = "creationPanel";
     creationPanel.className = "creation-panel";
     creationPanel.dataset.currentList = "";
+    const defaultColor = getNextLegendColor(theme) || "#000000";
     const listFields = document.createElement("div");
     listFields.className = "inline-fields";
     listFields.innerHTML = `
       <label>Nom de la liste<input id="field-category" type="text" placeholder="Liste d'embargo" /></label>
-      <label>Couleur<input id="field-categoryColor" type="color" value="${getNextLegendColor(
-      theme
-    )}" /></label>
+      <label class="color-picker">Couleur
+        <div class="color-picker__field">
+          <input id="field-categoryColor" type="color" value="${defaultColor}" />
+          <span id="field-categoryColorValue" class="color-value" aria-live="polite">${defaultColor.toUpperCase()}</span>
+        </div>
+      </label>
     `;
     creationPanel.appendChild(listFields);
     const picker = document.createElement("div");
@@ -2273,10 +2301,7 @@ function renderDynamicFields() {
           nameInput.value = "";
         }
         document.getElementById("field-category")?.focus();
-        const colorInput = document.getElementById("field-categoryColor");
-        if (colorInput) {
-          colorInput.value = getNextLegendColor(theme);
-        }
+        setCategoryColorValue(getNextLegendColor(theme));
         setCountrySelection([]);
         showCreationPanel();
       })
@@ -2284,6 +2309,7 @@ function renderDynamicFields() {
     dynamic.appendChild(buildEmbargoSummary());
     attachCreationPanel(creationPanel, "Créer une liste d'embargo");
     setupCountrySearch();
+    setupCategoryColorPreview();
     const shouldShowForm = !Object.keys(theme.data || {}).length;
     setCreationPanelVisibility(creationPanel, shouldShowForm);
   } else if (themeKey === "corruptionIndex") {
@@ -2520,7 +2546,7 @@ function buildEmbargoSummary() {
       }
       if (colorInput) {
         const currentColor = state.themes?.embargo?.legend?.[listName];
-        colorInput.value = currentColor || getNextLegendColor(state.themes.embargo);
+        setCategoryColorValue(currentColor || getNextLegendColor(state.themes.embargo));
       }
       setCountrySelection(countries);
       const backOffice = document.getElementById("backOffice");
@@ -3196,10 +3222,10 @@ function exportThemes() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = "planisphere-data.json";
+  a.download = "planisphere-configuration.json";
   a.click();
   URL.revokeObjectURL(url);
-  showToast("Export JSON généré", "success");
+  showToast("Fichier de configuration généré", "success");
 }
 
 function setupBackOfficeTabs() {
@@ -3262,8 +3288,8 @@ function setupBackOffice() {
   const panel = document.getElementById("backOffice");
   toggle.addEventListener("click", () => panel.classList.toggle("is-open"));
   close.addEventListener("click", () => panel.classList.remove("is-open"));
-  document.getElementById("backOfficeForm").addEventListener("submit", handleBackOfficeSubmit);
-  document.getElementById("resetData").addEventListener("click", () => {
+  document.getElementById("backOfficeForm")?.addEventListener("submit", handleBackOfficeSubmit);
+  document.getElementById("resetData")?.addEventListener("click", () => {
     state.themes = cloneThemes(DEFAULT_THEMES);
     state.currentTheme = Object.keys(state.themes)[0] || null;
     state.medicines = [...DEFAULT_MEDICINES];
@@ -3280,8 +3306,10 @@ function setupBackOffice() {
     setUnsavedChanges(false);
     showToast("Données réinitialisées", "success");
   });
-  const exportButton = document.getElementById("exportData");
-  exportButton.addEventListener("click", exportThemes);
+  const saveButton = document.getElementById("saveConfiguration");
+  if (saveButton) {
+    saveButton.addEventListener("click", exportThemes);
+  }
   setupMedicineCatalog();
   setupPriorityCatalog();
   setupBackOfficeTabs();

@@ -350,6 +350,14 @@ main {
   margin-bottom: 10px;
 }
 
+.back-office__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .back-office__form {
   display: grid;
   gap: 16px;
@@ -728,11 +736,11 @@ textarea {
   opacity: 1;
 }
 
-.action-toolbar {
+.back-office__utilities {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   flex-wrap: wrap;
   padding: 12px 14px;
   border: 1px solid var(--stroke);
@@ -742,16 +750,47 @@ textarea {
   margin-bottom: 14px;
 }
 
-.action-toolbar__group {
+.utility-actions {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .save-actions {
   display: flex;
   justify-content: flex-end;
   margin: 12px 0;
+}
+
+.color-picker__field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.color-value {
+  --preview-color: #000;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: monospace;
+}
+
+.color-value::before {
+  content: "";
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  background: var(--preview-color);
+  border: 1px solid var(--stroke);
 }
 
 .helper {
