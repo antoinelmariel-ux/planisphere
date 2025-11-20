@@ -295,6 +295,39 @@ main {
   transform: translateX(0);
 }
 
+.back-office__nav {
+  position: sticky;
+  top: 0;
+  z-index: 21;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  background: linear-gradient(180deg, #ffffff 70%, rgba(255, 255, 255, 0.82));
+  padding: 8px 0 14px;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--stroke);
+  background: #ffffff;
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 600;
+  box-shadow: var(--shadow);
+}
+
+.tab.is-active,
+.tab:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(47, 128, 237, 0.2);
+}
+
 .back-office__header {
   display: flex;
   align-items: center;
@@ -304,7 +337,16 @@ main {
 
 .back-office__form {
   display: grid;
-  gap: 12px;
+  gap: 16px;
+}
+
+.back-office__panel {
+  display: none;
+  gap: 14px;
+}
+
+.back-office__panel.is-active {
+  display: grid;
 }
 
 .back-office__section {
