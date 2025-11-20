@@ -1,4 +1,4 @@
-const APP_VERSION = "0.3.7";
+const APP_VERSION = "0.3.8";
 const WORLD_SVG_PATH = "assets/world.svg";
 const COUNTRY_ID_MAPPINGS = {
   US: "US",
@@ -264,7 +264,7 @@ const CONTINENTS = [
 const DEFAULT_THEMES = {
 
   countryProfile: {
-    label: "Fiche pays",
+    label: "Fiche Entitée",
     mode: "tooltip",
     color: "#ff9f3f",
     description: "Carte des fiches pays avec les données sociales, business et compliance.",
