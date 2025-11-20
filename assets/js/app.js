@@ -1,4 +1,4 @@
-const APP_VERSION = "0.8.0";
+const APP_VERSION = "0.8.1";
 const WORLD_SVG_PATH = "assets/world.svg";
 const CORRUPTION_INDEX_PATH = "assets/ICP2024.json";
 
@@ -2008,6 +2008,7 @@ function renderDynamicFields() {
     setupEntityRevenuePreview();
     dynamic.appendChild(buildCountryProfileList());
   } else if (themeKey === "embargo") {
+    dynamic.appendChild(buildCreationButton("Créer une liste d'embargo"));
     if (theme.allowCustomLegend) {
       dynamic.appendChild(buildLegendEditor(themeKey, theme));
     }
@@ -2052,7 +2053,7 @@ function renderDynamicFields() {
     wrapper.className = "area-manager";
     dynamic.appendChild(wrapper);
     buildProspectingMatrix();
-    dynamic.appendChild(buildCreationButton("Créer des pays en prospection"));
+    dynamic.prepend(buildCreationButton("Créer des pays en prospection"));
     dynamic.appendChild(buildProspectingSummary());
   } else if (theme.mode === "numeric") {
     dynamic.innerHTML = `<label>Valeur numérique<input id="field-numeric" type="number" step="0.1" /></label>`;
