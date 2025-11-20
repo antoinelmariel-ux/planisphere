@@ -23,6 +23,10 @@ body {
   min-height: 100vh;
 }
 
+body.has-modal {
+  overflow: hidden;
+}
+
 .app-header {
   display: flex;
   align-items: center;
@@ -558,6 +562,58 @@ label {
 }
 
 .creation-panel.is-visible {
+  display: grid;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+}
+
+.modal.is-open {
+  display: flex;
+}
+
+.modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.modal__dialog {
+  position: relative;
+  background: #ffffff;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 18px;
+  width: min(1100px, calc(100vw - 60px));
+  max-height: calc(100vh - 80px);
+  overflow: auto;
+  z-index: 1;
+  display: grid;
+  gap: 14px;
+}
+
+.modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modal__body {
+  display: grid;
+  gap: 14px;
+}
+
+.modal__body .creation-panel {
+  display: none;
+}
+
+.modal__body .creation-panel.is-visible {
   display: grid;
 }
 

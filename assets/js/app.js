@@ -1,4 +1,4 @@
-const APP_VERSION = "0.11.0";
+const APP_VERSION = "0.12.0";
 const WORLD_SVG_PATH = "assets/world.svg";
 const CORRUPTION_INDEX_PATH = "assets/ICP2024.json";
 
@@ -522,6 +522,7 @@ const state = {
 };
 
 let toastTimeout;
+let activeModalContent = null;
 
 const CATALOG_CONFIG = {
   medicine: {
@@ -1686,9 +1687,54 @@ function resetCountryProfileForm() {
   setupEntityRevenuePreview();
 }
 
+function closeModal() {
+  const modal = document.getElementById("modalOverlay");
+  if (!modal) return;
+  modal.classList.remove("is-open");
+  modal.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("has-modal");
+  if (activeModalContent) {
+    activeModalContent.classList.remove("is-visible");
+  }
+  activeModalContent = null;
+}
+
+function openModal(content, title = "Configuration") {
+  const modal = document.getElementById("modalOverlay");
+  const modalBody = document.getElementById("modalBody");
+  const modalTitle = document.getElementById("modalTitle");
+  if (!modal || !modalBody) return;
+  modalBody.innerHTML = "";
+  if (content) {
+    modalBody.appendChild(content);
+    activeModalContent = content;
+  }
+  if (modalTitle) {
+    modalTitle.textContent = title || content?.dataset.modalTitle || "Configuration";
+  }
+  modal.classList.add("is-open");
+  modal.setAttribute("aria-hidden", "false");
+  document.body.classList.add("has-modal");
+}
+
+function attachCreationPanel(panel, title) {
+  if (!panel) return;
+  panel.dataset.modalTitle = title || panel.dataset.modalTitle || "Configuration";
+  const modalBody = document.getElementById("modalBody");
+  if (modalBody && panel.parentElement !== modalBody) {
+    modalBody.innerHTML = "";
+    modalBody.appendChild(panel);
+  }
+}
+
 function setCreationPanelVisibility(panel, isVisible) {
   if (!panel) return;
   panel.classList.toggle("is-visible", !!isVisible);
+  if (isVisible) {
+    openModal(panel, panel.dataset.modalTitle);
+  } else if (activeModalContent === panel) {
+    closeModal();
+  }
 }
 
 function showCreationPanel() {
@@ -2098,6 +2144,7 @@ function renderDynamicFields() {
   const dynamic = document.getElementById("dynamicFields");
   dynamic.innerHTML = "";
   setFormActionsVisibility(false);
+  closeModal();
 
   if (!theme) {
     const empty = document.createElement("p");
@@ -2174,7 +2221,7 @@ function renderDynamicFields() {
         field?.focus();
       })
     );
-    dynamic.appendChild(creationPanel);
+    attachCreationPanel(creationPanel, "Créer ou modifier une entité");
     setupCountrySearch();
     buildMedicineChoices();
     buildPriorityChoices();
@@ -2214,7 +2261,7 @@ function renderDynamicFields() {
         search?.focus();
       })
     );
-    dynamic.appendChild(creationPanel);
+    attachCreationPanel(creationPanel, "Créer une liste d'embargo");
     setupCountrySearch();
     const shouldShowForm = !Object.keys(theme.data || {}).length;
     setCreationPanelVisibility(creationPanel, shouldShowForm);
@@ -2253,7 +2300,7 @@ function renderDynamicFields() {
     creationPanel.appendChild(wrapper);
     dynamic.appendChild(buildProspectingSummary());
     dynamic.appendChild(buildCreationButton("Créer des pays en prospection"));
-    dynamic.appendChild(creationPanel);
+    attachCreationPanel(creationPanel, "Créer des pays en prospection");
     buildProspectingMatrix();
     const shouldShowForm = !Object.keys(theme.data || {}).length;
     setCreationPanelVisibility(creationPanel, shouldShowForm);
@@ -3311,6 +3358,24 @@ function setupBackOffice() {
   setupBackOfficeTabs();
   setupChangeTracking();
   setUnsavedChanges(false);
+
+  const modal = document.getElementById("modalOverlay");
+  const closeModalButton = document.getElementById("closeModal");
+  if (closeModalButton) {
+    closeModalButton.addEventListener("click", closeModal);
+  }
+  if (modal) {
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal || event.target.classList.contains("modal__backdrop")) {
+        closeModal();
+      }
+    });
+  }
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && activeModalContent) {
+      closeModal();
+    }
+  });
 }
 
 function applyViewBox(value) {
