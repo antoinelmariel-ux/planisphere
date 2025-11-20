@@ -1,4 +1,4 @@
-const APP_VERSION = "0.8.4";
+const APP_VERSION = "0.9.0";
 const WORLD_SVG_PATH = "assets/world.svg";
 const CORRUPTION_INDEX_PATH = "assets/ICP2024.json";
 
@@ -513,6 +513,7 @@ const state = {
   medicines: loadMedicines(),
   priorities: loadPriorities(),
   countrySelector: loadCountrySelectorState(),
+  selectedEntityId: null,
   map: null,
   countryLayers: {},
   defaultViewBox: VIEWBOX_FALLBACK
@@ -1609,6 +1610,27 @@ function setCountrySelection(countryIds = []) {
   renderCountryRevenueInputs(countryIds);
 }
 
+function resetCountryProfileForm() {
+  setFieldValue("field-entityName", "");
+  setFieldValue("field-entityType", "subsidiary");
+  setFieldValue("field-shareholding", "100% LFB");
+  setFieldValue("field-generalManager", "");
+  setFieldValue("field-complianceContact", "");
+  setFieldValue("field-contacts", "");
+  setFieldValue("field-employees", "");
+  setFieldValue("field-globalRevenue", "");
+  setFieldValue("field-revenueCurrency", "M€");
+  setFieldValue("field-distributorRevenue", "");
+  setFieldValue("field-distributorCurrency", "M€");
+  setCheckedValues("activityGroup", []);
+  setCheckedValues("priorityChoices", []);
+  setCheckedValues("subsidiaryMedicines", []);
+  setCheckedValues("distributorMedicines", []);
+  setCountrySelection([]);
+  toggleEntityTypeFields();
+  setupEntityRevenuePreview();
+}
+
 function buildCreationButton(label) {
   const container = document.createElement("div");
   container.className = "theme-actions";
@@ -2073,7 +2095,9 @@ function renderDynamicFields() {
     buildPriorityChoices();
     setupActivityToggles();
     setupEntityRevenuePreview();
-    dynamic.appendChild(buildCountryProfileList());
+    setupEntitySidebar();
+    renderEntitySidebar();
+    populateSelectedEntity();
   } else if (themeKey === "embargo") {
     dynamic.appendChild(buildCreationButton("Créer une liste d'embargo"));
     if (theme.allowCustomLegend) {
@@ -2132,6 +2156,10 @@ function renderDynamicFields() {
     }
     const categoryField = buildCategoryField(themeKey, theme);
     dynamic.appendChild(categoryField);
+  }
+
+  if (themeKey !== "countryProfile") {
+    renderEntitySidebar();
   }
 }
 
@@ -2207,6 +2235,163 @@ function buildCountryProfileList() {
 
   container.appendChild(list);
   return container;
+}
+
+function updateDeleteButtonState() {
+  const deleteButton = document.getElementById("deleteEntity");
+  if (!deleteButton) return;
+  const isVisible = state.currentTheme === "countryProfile" && !!state.selectedEntityId;
+  deleteButton.style.display = isVisible ? "" : "none";
+  deleteButton.disabled = !isVisible;
+}
+
+function populateSelectedEntity() {
+  if (state.currentTheme !== "countryProfile") {
+    updateDeleteButtonState();
+    return;
+  }
+  const profile = state.themes?.countryProfile?.data?.[state.selectedEntityId];
+  if (profile) {
+    populateCountryProfileForm(state.selectedEntityId, profile);
+  } else {
+    resetCountryProfileForm();
+  }
+  updateDeleteButtonState();
+}
+
+function selectEntity(countryId) {
+  state.selectedEntityId = countryId || null;
+  renderEntitySidebar();
+  populateSelectedEntity();
+}
+
+function deleteSelectedEntity() {
+  if (state.currentTheme !== "countryProfile" || !state.selectedEntityId) return;
+  const theme = state.themes?.countryProfile;
+  if (!theme?.data) return;
+  const profile = theme.data[state.selectedEntityId];
+  const country = COUNTRIES.find((c) => c.id === state.selectedEntityId);
+  const label = profile?.entityName || country?.name || state.selectedEntityId;
+  if (!confirm(`Supprimer l'entité ${label} ?`)) return;
+  delete theme.data[state.selectedEntityId];
+  state.themes = { ...state.themes, countryProfile: { ...theme, data: { ...theme.data } } };
+  persistThemes();
+  state.selectedEntityId = null;
+  renderEntitySidebar();
+  populateSelectedEntity();
+  refreshMap();
+  buildLegend();
+}
+
+function getFilteredEntities() {
+  const searchValue = (document.getElementById("entitySearch")?.value || "")
+    .trim()
+    .toLowerCase();
+  const typeFilter = document.getElementById("entityTypeFilter")?.value || "all";
+  const entries = Object.entries(state.themes?.countryProfile?.data || {}).sort((a, b) =>
+    getProfileEntityKey(a[1]).localeCompare(getProfileEntityKey(b[1]))
+  );
+
+  return entries.filter(([countryId, profile]) => {
+    const matchesType = typeFilter === "all" || profile?.entityType === typeFilter;
+    if (!matchesType) return false;
+    if (!searchValue) return true;
+    const country = COUNTRIES.find((c) => c.id === countryId);
+    const haystack = `${getProfileEntityKey(profile)} ${country?.name || ""} ${countryId}`.toLowerCase();
+    return haystack.includes(searchValue);
+  });
+}
+
+function renderEntitySidebar() {
+  const sidebar = document.getElementById("entitySidebar");
+  if (!sidebar) return;
+  const list = document.getElementById("entityList");
+  const isVisible = state.currentTheme === "countryProfile";
+  sidebar.style.display = isVisible ? "" : "none";
+  sidebar.setAttribute("aria-hidden", isVisible ? "false" : "true");
+  if (!isVisible || !list) {
+    updateDeleteButtonState();
+    return;
+  }
+
+  const filtered = getFilteredEntities();
+  list.innerHTML = "";
+
+  if (!filtered.length) {
+    state.selectedEntityId = null;
+    resetCountryProfileForm();
+    const empty = document.createElement("p");
+    empty.className = "entity-list__empty";
+    empty.textContent = "Aucune entité trouvée.";
+    list.appendChild(empty);
+    updateDeleteButtonState();
+    return;
+  }
+
+  const hasSelection = filtered.some(([countryId]) => countryId === state.selectedEntityId);
+  if (!hasSelection) {
+    state.selectedEntityId = filtered[0][0];
+  }
+
+  filtered.forEach(([countryId, profile]) => {
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "entity-list__row";
+    row.classList.toggle("is-active", state.selectedEntityId === countryId);
+
+    const title = document.createElement("strong");
+    title.textContent = profile?.entityName || "(Sans nom)";
+
+    const meta = document.createElement("div");
+    meta.className = "entity-list__meta";
+    const country = COUNTRIES.find((c) => c.id === countryId);
+    const entityTypeLabel = profile?.entityType === "distributor" ? "Distributeur" : "Filiale / JV";
+    const revenue = formatRevenue(extractRevenueValue(profile, countryId), getProfileCurrency(profile));
+
+    const location = document.createElement("span");
+    location.textContent = `${entityTypeLabel} · ${country?.name || countryId}`;
+    const revenueLabel = document.createElement("span");
+    revenueLabel.textContent = revenue;
+
+    meta.appendChild(location);
+    meta.appendChild(revenueLabel);
+
+    row.appendChild(title);
+    row.appendChild(meta);
+    row.addEventListener("click", () => selectEntity(countryId));
+    list.appendChild(row);
+  });
+
+  updateDeleteButtonState();
+}
+
+function setupEntitySidebar() {
+  const search = document.getElementById("entitySearch");
+  if (search && !search.dataset.bound) {
+    search.addEventListener("input", renderEntitySidebar);
+    search.dataset.bound = "true";
+  }
+  const filter = document.getElementById("entityTypeFilter");
+  if (filter && !filter.dataset.bound) {
+    filter.addEventListener("change", renderEntitySidebar);
+    filter.dataset.bound = "true";
+  }
+  const newEntityButton = document.getElementById("newEntityButton");
+  if (newEntityButton && !newEntityButton.dataset.bound) {
+    newEntityButton.addEventListener("click", () => {
+      state.selectedEntityId = null;
+      resetCountryProfileForm();
+      renderEntitySidebar();
+      const field = document.getElementById("field-entityName");
+      field?.focus();
+    });
+    newEntityButton.dataset.bound = "true";
+  }
+  const deleteButton = document.getElementById("deleteEntity");
+  if (deleteButton && !deleteButton.dataset.bound) {
+    deleteButton.addEventListener("click", deleteSelectedEntity);
+    deleteButton.dataset.bound = "true";
+  }
 }
 
 function buildEmbargoSummary() {
@@ -2800,6 +2985,7 @@ function handleBackOfficeSubmit(e) {
         ethicsPriorities: priorities
       };
     });
+    state.selectedEntityId = selectedCountries[0];
   } else if (themeKey === "corruptionIndex") {
     const inputs = document.querySelectorAll("#corruptionTable input[data-country]");
     const corruptionData = {};
@@ -2971,6 +3157,7 @@ function setupBackOffice() {
     state.currentTheme = Object.keys(state.themes)[0] || null;
     state.medicines = [...DEFAULT_MEDICINES];
     state.priorities = [...DEFAULT_PRIORITIES];
+    state.selectedEntityId = null;
     persistThemes();
     persistMedicines();
     persistPriorities();
