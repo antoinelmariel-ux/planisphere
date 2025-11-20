@@ -70,10 +70,25 @@
       </div>
     </form>
     <p class="helper">Les modifications sont conservées dans votre navigateur (localStorage) pour un usage 100% local.</p>
+
+    <section class="back-office__section" aria-labelledby="medicineTitle">
+      <header class="back-office__section-header">
+        <div>
+          <p class="eyebrow">Catalogue</p>
+          <h4 id="medicineTitle">Médicaments</h4>
+        </div>
+        <p class="helper">Liste globale des produits pouvant être proposés par les entités.</p>
+      </header>
+      <div id="medicineList" class="pill-list" aria-live="polite"></div>
+      <div class="medicine-actions">
+        <input id="medicineInput" type="text" placeholder="Ajouter un médicament" aria-label="Nouveau médicament" />
+        <button type="button" id="addMedicine" class="ghost">Ajouter</button>
+      </div>
+    </section>
   </aside>
 
   <footer class="footer">
-    <p>Planisphère compliance – version <strong id="versionLabel">0.3.9</strong></p>
+    <p>Planisphère compliance – version <strong id="versionLabel">0.4.0</strong></p>
   </footer>
 
   <script src="assets/js/app.js"></script>
