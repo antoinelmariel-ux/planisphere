@@ -1,4 +1,4 @@
-const APP_VERSION = "0.3.8";
+const APP_VERSION = "0.3.9";
 const WORLD_SVG_PATH = "assets/world.svg";
 const COUNTRY_ID_MAPPINGS = {
   US: "US",
@@ -349,6 +349,27 @@ const DEFAULT_THEMES = {
         complianceLead: "Oliver Grant (Sponsor : CTO APAC)",
         legal: "Privacy Act, lois anticorruption, sécurité produits"
       }
+    }
+  },
+  embargoLists: {
+    label: "Pays sous embargo",
+    mode: "category",
+    allowCustomLegend: true,
+    description:
+      "Cartographie des listes d'embargo (ONU, UE, OFAC...) avec couleurs personnalisables.",
+    legend: {
+      "Sanctions complètes": "#ef4444",
+      "Restriction partielle": "#f97316",
+      "Surveillance renforcée": "#6366f1"
+    },
+    data: {
+      RU: "Sanctions complètes",
+      IR: "Sanctions complètes",
+      KP: "Sanctions complètes",
+      SY: "Restriction partielle",
+      CU: "Restriction partielle",
+      BY: "Surveillance renforcée",
+      VE: "Surveillance renforcée"
     }
   },
   corruptionIndex: {
@@ -750,6 +771,12 @@ function buildTooltipContent(id, theme) {
   if (theme === state.themes.areaManager) {
     return `<h4>${country.name}</h4><p>Zone : <strong>${value}</strong></p>`;
   }
+  if (theme.mode === "category") {
+    return `<h4>${country.name}</h4><p>Liste : <strong>${value}</strong></p>`;
+  }
+  if (theme.mode === "numeric") {
+    return `<h4>${country.name}</h4><p>Valeur : <strong>${value}</strong></p>`;
+  }
   return "";
 }
 
@@ -793,6 +820,173 @@ function buildBackOffice() {
   themeSelect.value = state.currentTheme;
   renderDynamicFields();
   themeSelect.addEventListener("change", renderDynamicFields);
+}
+
+const LEGEND_COLORS = ["#ef4444", "#f97316", "#6366f1", "#0ea5e9", "#22c55e", "#facc15"];
+
+function getNextLegendColor(theme) {
+  const used = new Set(Object.values(theme.legend || {}));
+  const available = LEGEND_COLORS.find((color) => !used.has(color));
+  if (available) return available;
+  return LEGEND_COLORS[used.size % LEGEND_COLORS.length];
+}
+
+function updateLegendEntry(themeKey, previousLabel, nextLabel, color) {
+  const theme = state.themes[themeKey];
+  if (!theme || !previousLabel) return;
+  const legend = { ...(theme.legend || {}) };
+  const data = { ...(theme.data || {}) };
+
+  if (legend[nextLabel] && previousLabel !== nextLabel) {
+    alert("Une liste avec ce nom existe déjà");
+    return;
+  }
+
+  delete legend[previousLabel];
+  legend[nextLabel] = color;
+
+  if (previousLabel !== nextLabel) {
+    Object.entries(data).forEach(([countryId, value]) => {
+      if (value === previousLabel) data[countryId] = nextLabel;
+    });
+  }
+
+  const updatedTheme = { ...theme, legend, data };
+  state.themes = { ...state.themes, [themeKey]: updatedTheme };
+  persistThemes();
+  if (state.currentTheme === themeKey) {
+    refreshColors();
+    buildLegend();
+  }
+  if (previousLabel !== nextLabel) {
+    renderDynamicFields();
+  }
+}
+
+function addLegendEntry(themeKey, label, color) {
+  const theme = state.themes[themeKey];
+  if (!theme) return;
+  const legend = { ...(theme.legend || {}) };
+  if (legend[label]) {
+    alert("Cette liste existe déjà");
+    return;
+  }
+
+  legend[label] = color || getNextLegendColor(theme);
+  const updatedTheme = { ...theme, legend };
+  state.themes = { ...state.themes, [themeKey]: updatedTheme };
+  persistThemes();
+  if (state.currentTheme === themeKey) {
+    refreshColors();
+    buildLegend();
+  }
+  renderDynamicFields();
+}
+
+function buildLegendEditor(themeKey, theme) {
+  const container = document.createElement("div");
+  container.className = "legend-editor";
+
+  const header = document.createElement("div");
+  header.className = "legend-editor__header";
+  header.innerHTML =
+    "<div><div class=\"eyebrow\">Listes</div><strong>Gérer les légendes</strong></div><p class=\"helper\">Ajoutez des listes d'embargo et ajustez leur couleur.</p>";
+  container.appendChild(header);
+
+  const listContainer = document.createElement("div");
+  listContainer.className = "legend-editor__list";
+
+  Object.entries(theme.legend || {}).forEach(([label, color]) => {
+    const row = document.createElement("div");
+    row.className = "legend-row";
+
+    const nameInput = document.createElement("input");
+    nameInput.type = "text";
+    nameInput.value = label;
+    nameInput.placeholder = "Nom de la liste";
+
+    const colorInput = document.createElement("input");
+    colorInput.type = "color";
+    colorInput.value = color;
+
+    nameInput.addEventListener("blur", () => {
+      const nextLabel = nameInput.value.trim();
+      if (!nextLabel) {
+        nameInput.value = label;
+        return;
+      }
+      updateLegendEntry(themeKey, label, nextLabel, colorInput.value);
+    });
+
+    colorInput.addEventListener("input", () => {
+      const nextLabel = nameInput.value.trim() || label;
+      updateLegendEntry(themeKey, label, nextLabel, colorInput.value);
+    });
+
+    row.appendChild(nameInput);
+    row.appendChild(colorInput);
+    listContainer.appendChild(row);
+  });
+
+  container.appendChild(listContainer);
+
+  const form = document.createElement("div");
+  form.className = "legend-editor__form";
+  const nameInput = document.createElement("input");
+  nameInput.type = "text";
+  nameInput.placeholder = "Nom de la nouvelle liste";
+
+  const colorInput = document.createElement("input");
+  colorInput.type = "color";
+  colorInput.value = getNextLegendColor(theme);
+
+  const addButton = document.createElement("button");
+  addButton.type = "button";
+  addButton.textContent = "Ajouter une liste";
+  addButton.addEventListener("click", () => {
+    const label = nameInput.value.trim();
+    if (!label) return alert("Merci d'indiquer un nom de liste");
+    addLegendEntry(themeKey, label, colorInput.value);
+    nameInput.value = "";
+    colorInput.value = getNextLegendColor(state.themes[themeKey]);
+  });
+
+  form.appendChild(nameInput);
+  form.appendChild(colorInput);
+  form.appendChild(addButton);
+  container.appendChild(form);
+
+  return container;
+}
+
+function buildCategoryField(themeKey, theme) {
+  const container = document.createElement("div");
+  container.className = "category-field";
+  const legendEntries = Object.keys(theme.legend || {});
+
+  if (!legendEntries.length) {
+    const message = document.createElement("p");
+    message.className = "helper";
+    message.textContent = "Ajoutez au moins une liste pour attribuer les pays.";
+    container.appendChild(message);
+    return container;
+  }
+
+  const label = document.createElement("label");
+  label.textContent = theme.allowCustomLegend ? "Liste d'embargo" : "Catégorie";
+
+  const select = document.createElement("select");
+  select.id = "field-category";
+  legendEntries.forEach((entry) => {
+    const option = document.createElement("option");
+    option.value = entry;
+    option.textContent = entry;
+    select.appendChild(option);
+  });
+
+  label.appendChild(select);
+  container.appendChild(label);
+  return container;
 }
 
 function getSelectedCountries() {
@@ -885,25 +1079,12 @@ function renderDynamicFields() {
     dynamic.innerHTML = `<label>Valeur numérique<input id="field-numeric" type="number" step="0.1" /></label>`;
   } else if (themeKey === "products") {
     dynamic.innerHTML = `<label>Produits (séparés par des virgules)<textarea id="field-products"></textarea></label>`;
-  } else if (themeKey === "subsidiaryType") {
-    dynamic.innerHTML = `
-      <label>Type de filiale
-        <select id="field-category">
-          <option>Collecte</option>
-          <option>Promotion</option>
-          <option>Promotion & Collecte</option>
-          <option>Distributeur</option>
-        </select>
-      </label>`;
-  } else if (themeKey === "areaManager") {
-    dynamic.innerHTML = `
-      <label>Zone
-        <select id="field-category">
-          <option>Area Manager 1</option>
-          <option>Area Manager 2</option>
-          <option>Area Manager 3</option>
-        </select>
-      </label>`;
+  } else if (theme.mode === "category") {
+    if (theme.allowCustomLegend) {
+      dynamic.appendChild(buildLegendEditor(themeKey, theme));
+    }
+    const categoryField = buildCategoryField(themeKey, theme);
+    dynamic.appendChild(categoryField);
   }
 }
 
@@ -936,7 +1117,11 @@ function handleBackOfficeSubmit(e) {
       const raw = document.getElementById("field-products").value;
       theme.data[countryId] = { products: raw.split(",").map((p) => p.trim()).filter(Boolean) };
     } else if (theme.mode === "category") {
-      const category = document.getElementById("field-category").value;
+      const categoryField = document.getElementById("field-category");
+      if (!categoryField) {
+        return alert("Merci d'ajouter au moins une liste pour continuer");
+      }
+      const category = categoryField.value;
       theme.data[countryId] = category;
     }
   });
