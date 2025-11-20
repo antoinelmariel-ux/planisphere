@@ -49,11 +49,20 @@
       <button class="ghost" id="closeBackOffice">Fermer</button>
     </div>
     <div class="back-office__nav" role="tablist" aria-label="Navigation du back-office">
-      <button class="tab is-active" id="tab-settings" role="tab" aria-selected="true" aria-controls="panel-settings">
-        Paramétrage thématiques &amp; pays
+      <button class="tab is-active" id="tab-entities" data-theme="countryProfile" role="tab" aria-selected="true" aria-controls="panel-config">
+        Entités
       </button>
-      <button class="tab" id="tab-data" role="tab" aria-selected="false" aria-controls="panel-data">
-        Données dynamiques
+      <button class="tab" id="tab-embargo" data-theme="embargo" role="tab" aria-selected="false" aria-controls="panel-config">
+        Embargo
+      </button>
+      <button class="tab" id="tab-corruption" data-theme="corruptionIndex" role="tab" aria-selected="false" aria-controls="panel-config">
+        Indice de perception de la corruption
+      </button>
+      <button class="tab" id="tab-area" data-theme="areaManager" role="tab" aria-selected="false" aria-controls="panel-config">
+        Area Manager
+      </button>
+      <button class="tab" id="tab-prospecting" data-theme="prospecting" role="tab" aria-selected="false" aria-controls="panel-config">
+        En prospection
       </button>
       <button class="tab" id="tab-catalogs" role="tab" aria-selected="false" aria-controls="panel-catalogs">
         Catalogues transverses
@@ -61,41 +70,15 @@
     </div>
 
     <form id="backOfficeForm" class="back-office__form">
-      <section
-        id="panel-settings"
-        class="back-office__panel is-active"
-        role="tabpanel"
-        aria-labelledby="tab-settings"
-      >
-        <label>
-          Thématique
-          <select id="themeSelect"></select>
-        </label>
-
-        <fieldset class="country-fieldset">
-          <legend>
-            <div class="country-legend">
-              <span>Pays (sélection par continent)</span>
-              <div id="countryBadges" class="country-badges"></div>
-            </div>
-          </legend>
-          <div class="country-toolbar">
-            <label class="visually-hidden" for="countryFilter">Rechercher un pays</label>
-            <input
-              id="countryFilter"
-              type="search"
-              placeholder="Rechercher par nom ou code"
-              aria-label="Rechercher un pays"
-            />
-            <div id="continentFilters" class="continent-filters" aria-label="Filtrer par continent"></div>
+      <section id="panel-config" class="back-office__panel is-active" role="tabpanel" aria-labelledby="tab-entities">
+        <div class="theme-context">
+          <div>
+            <p class="eyebrow">Thématique active</p>
+            <h4 id="themeTitle">Entités</h4>
           </div>
-          <div id="countrySelection" class="country-selector"></div>
-        </fieldset>
+          <select id="themeSelect" class="visually-hidden" aria-hidden="true" tabindex="-1"></select>
+        </div>
 
-        <p class="helper">Les modifications sont conservées dans votre navigateur (localStorage) pour un usage 100% local.</p>
-      </section>
-
-      <section id="panel-data" class="back-office__panel" role="tabpanel" aria-labelledby="tab-data" aria-hidden="true">
         <div id="dynamicFields"></div>
 
         <div class="form-actions">
@@ -146,7 +129,7 @@
   </aside>
 
   <footer class="footer">
-    <p>Planisphère compliance – version <strong id="versionLabel">0.5.0</strong></p>
+    <p>Planisphère compliance – version <strong id="versionLabel">0.6.0</strong></p>
   </footer>
 
   <script src="assets/js/app.js"></script>

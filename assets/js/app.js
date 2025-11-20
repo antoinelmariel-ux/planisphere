@@ -1,4 +1,4 @@
-const APP_VERSION = "0.5.0";
+const APP_VERSION = "0.6.0";
 const WORLD_SVG_PATH = "assets/world.svg";
 const CORRUPTION_INDEX_PATH = "assets/ICP2024.json";
 
@@ -461,7 +461,45 @@ const CONTINENTS = [
   )
 }));
 
-const DEFAULT_THEMES = {};
+const DEFAULT_THEMES = {
+  countryProfile: {
+    label: "Entités",
+    mode: "tooltip",
+    color: "#0ea5e9",
+    data: {}
+  },
+  embargo: {
+    label: "Embargo",
+    mode: "category",
+    allowCustomLegend: true,
+    legend: { "Liste d'embargo A": "#ef4444" },
+    data: {}
+  },
+  corruptionIndex: {
+    label: "Indice de perception de la corruption",
+    mode: "numeric",
+    domain: [0, 100],
+    palette: ["#dbeafe", "#3b82f6", "#1e3a8a"],
+    data: {}
+  },
+  areaManager: {
+    label: "Area Manager",
+    mode: "category",
+    allowCustomLegend: true,
+    legend: {
+      "Area Manager 1": "#0ea5e9",
+      "Area Manager 2": "#6366f1",
+      "Area Manager 3": "#22c55e"
+    },
+    data: {}
+  },
+  prospecting: {
+    label: "En prospection",
+    mode: "category",
+    legend: { "En prospection": "#f97316" },
+    data: {}
+  }
+};
 
 const initialThemes = loadThemes();
 const initialThemeKey = Object.keys(initialThemes)[0] || null;
@@ -541,9 +579,13 @@ function normalizeThemeCountries(themes) {
 
 function loadThemes() {
   try {
-    localStorage.removeItem("complianceThemes");
+    const cached = localStorage.getItem("complianceThemes");
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      return normalizeThemeCountries(parsed);
+    }
   } catch (error) {
-    console.warn("Impossible de réinitialiser les thématiques", error);
+    console.warn("Impossible de charger les thématiques", error);
   }
   return normalizeThemeCountries(DEFAULT_THEMES);
 }
@@ -585,6 +627,9 @@ async function refreshCorruptionIndexData() {
     persistThemes();
     refreshColors();
     buildLegend();
+    if (state.currentTheme === "corruptionIndex") {
+      buildCorruptionTable();
+    }
   } catch (error) {
     console.error("Impossible de mettre à jour l'indice de corruption", error);
   }
@@ -860,6 +905,13 @@ function selectTheme(key) {
   document.querySelectorAll(".theme-menu button").forEach((btn) =>
     btn.classList.toggle("is-active", btn.id === `btn-${key}`)
   );
+  const themeSelect = document.getElementById("themeSelect");
+  if (themeSelect) {
+    themeSelect.value = key;
+  }
+  if (document.getElementById("panel-config")?.classList.contains("is-active")) {
+    renderDynamicFields();
+  }
   setMenuOpen(false);
   refreshMap();
   buildLegend();
@@ -1127,6 +1179,7 @@ function setupBurger() {
 
 function buildBackOffice() {
   const themeSelect = document.getElementById("themeSelect");
+  if (!themeSelect) return;
   themeSelect.innerHTML = "";
   const hasThemes = Object.keys(state.themes).length > 0;
   if (!hasThemes) {
@@ -1135,34 +1188,17 @@ function buildBackOffice() {
     option.textContent = "Aucune thématique disponible";
     themeSelect.appendChild(option);
     themeSelect.disabled = true;
-    const countrySelection = document.getElementById("countrySelection");
-    if (countrySelection) countrySelection.innerHTML = "";
-    const countryBadges = document.getElementById("countryBadges");
-    if (countryBadges) countryBadges.innerHTML = "";
-    const filterContainer = document.getElementById("continentFilters");
-    if (filterContainer) filterContainer.innerHTML = "";
-    const filterInput = document.getElementById("countryFilter");
-    if (filterInput) {
-      filterInput.value = "";
-      filterInput.disabled = true;
-    }
     renderDynamicFields();
     return;
   }
 
   themeSelect.disabled = false;
-  const filterInput = document.getElementById("countryFilter");
-  if (filterInput) {
-    filterInput.disabled = false;
-  }
   Object.entries(state.themes).forEach(([key, theme]) => {
     const option = document.createElement("option");
     option.value = key;
     option.textContent = theme.label;
     themeSelect.appendChild(option);
   });
-
-  buildCountrySelector();
 
   state.currentTheme = state.currentTheme ?? Object.keys(state.themes)[0];
   themeSelect.value = state.currentTheme;
@@ -1411,8 +1447,12 @@ function buildLegendEditor(themeKey, theme) {
 
   const header = document.createElement("div");
   header.className = "legend-editor__header";
+  const helperText =
+    themeKey === "embargo"
+      ? "Ajoutez des listes d'embargo et ajustez leur couleur."
+      : "Renommez ou ajoutez des zones pour organiser vos pays.";
   header.innerHTML =
-    "<div><div class=\"eyebrow\">Listes</div><strong>Gérer les légendes</strong></div><p class=\"helper\">Ajoutez des listes d'embargo et ajustez leur couleur.</p>";
+    `<div><div class="eyebrow">Listes</div><strong>Gérer les légendes</strong></div><p class="helper">${helperText}</p>`;
   container.appendChild(header);
 
   const listContainer = document.createElement("div");
@@ -1512,16 +1552,16 @@ function buildCategoryField(themeKey, theme) {
 }
 
 function getSelectedCountries() {
-  const tagContainer = document.getElementById("countryTags");
+  const activePanel = document.querySelector(".back-office__panel.is-active");
+  const tagContainer = activePanel?.querySelector(".tag-container");
   if (tagContainer) {
     const tags = Array.from(tagContainer.querySelectorAll(".tag"));
     if (tags.length) {
       return tags.map((tag) => tag.dataset.code);
     }
   }
-  return Array.from(document.querySelectorAll(".country-checkbox:checked")).map(
-    (input) => input.value
-  );
+  const checkboxes = activePanel?.querySelectorAll(".country-checkbox:checked") || [];
+  return Array.from(checkboxes).map((input) => input.value);
 }
 
 function renderCountryBadges(summary) {
@@ -1859,6 +1899,11 @@ function renderDynamicFields() {
   const dynamic = document.getElementById("dynamicFields");
   dynamic.innerHTML = "";
 
+  const title = document.getElementById("themeTitle");
+  if (title) {
+    title.textContent = theme?.label || "Configuration";
+  }
+
   if (!theme) {
     const empty = document.createElement("p");
     empty.className = "helper";
@@ -1869,6 +1914,7 @@ function renderDynamicFields() {
 
   if (themeKey === "countryProfile") {
     dynamic.innerHTML = `
+      <p class="helper">Créez ou modifiez vos filiales, JV ou distributeurs.</p>
       <label>Nom de l'entité<input id="field-entityName" type="text" /></label>
       <label>Type d'entité
         <select id="field-entityType">
@@ -1890,6 +1936,7 @@ function renderDynamicFields() {
       </div>
       <fieldset id="activityGroup" class="stack" data-entity="subsidiary">
         <legend>Activités</legend>
+        <label class="pill-toggle"><input type="checkbox" name="activity" value="production" />Production</label>
         <label class="pill-toggle"><input type="checkbox" name="activity" value="collecte" />Collecte</label>
         <label class="pill-toggle"><input type="checkbox" name="activity" value="commercial" />Commercialisation</label>
       </fieldset>
@@ -1923,6 +1970,50 @@ function renderDynamicFields() {
     buildPriorityChoices();
     setupActivityToggles();
     setupEntityRevenuePreview();
+  } else if (themeKey === "embargo") {
+    if (theme.allowCustomLegend) {
+      dynamic.appendChild(buildLegendEditor(themeKey, theme));
+    }
+    const picker = document.createElement("div");
+    picker.className = "country-chip-selector";
+    picker.innerHTML = `
+      <label for="countrySearch">Pays concernés</label>
+      <input id="countrySearch" type="search" list="countryOptions" placeholder="Rechercher un pays" />
+      <datalist id="countryOptions"></datalist>
+      <div id="countryTags" class="tag-container" aria-live="polite"></div>
+    `;
+    dynamic.appendChild(picker);
+    const categoryField = buildCategoryField(themeKey, theme);
+    dynamic.appendChild(categoryField);
+    setupCountrySearch();
+  } else if (themeKey === "corruptionIndex") {
+    const tableWrapper = document.createElement("div");
+    tableWrapper.className = "corruption-table";
+    const info = document.createElement("p");
+    info.className = "helper";
+    info.textContent = "Table pré-remplie depuis ICP2024.json. Modifiez les valeurs si besoin.";
+    tableWrapper.appendChild(info);
+    const table = document.createElement("table");
+    table.id = "corruptionTable";
+    table.innerHTML = `<thead><tr><th>Pays</th><th>Indice 2024</th></tr></thead><tbody></tbody>`;
+    tableWrapper.appendChild(table);
+    dynamic.appendChild(tableWrapper);
+    buildCorruptionTable();
+  } else if (themeKey === "areaManager") {
+    if (theme.allowCustomLegend) {
+      dynamic.appendChild(buildLegendEditor(themeKey, theme));
+    }
+    const container = document.createElement("div");
+    container.id = "areaManagerAssignments";
+    container.className = "area-manager";
+    dynamic.appendChild(container);
+    buildAreaManagerAssignments();
+  } else if (themeKey === "prospecting") {
+    const wrapper = document.createElement("div");
+    wrapper.id = "prospectingMatrix";
+    wrapper.className = "area-manager";
+    dynamic.appendChild(wrapper);
+    buildProspectingMatrix();
   } else if (theme.mode === "numeric") {
     dynamic.innerHTML = `<label>Valeur numérique<input id="field-numeric" type="number" step="0.1" /></label>`;
   } else if (themeKey === "products") {
@@ -1934,6 +2025,189 @@ function renderDynamicFields() {
     const categoryField = buildCategoryField(themeKey, theme);
     dynamic.appendChild(categoryField);
   }
+}
+
+function buildCorruptionTable() {
+  const tbody = document.querySelector("#corruptionTable tbody");
+  if (!tbody) return;
+  const corruption = state.themes?.corruptionIndex?.data || {};
+  tbody.innerHTML = "";
+
+  COUNTRIES.forEach((country) => {
+    const row = document.createElement("tr");
+    const countryCell = document.createElement("td");
+    countryCell.textContent = country.name;
+    const valueCell = document.createElement("td");
+    const input = document.createElement("input");
+    input.type = "number";
+    input.step = "1";
+    input.min = "0";
+    input.max = "100";
+    input.value = corruption[country.id] ?? "";
+    input.dataset.country = country.id;
+    valueCell.appendChild(input);
+    row.appendChild(countryCell);
+    row.appendChild(valueCell);
+    tbody.appendChild(row);
+  });
+}
+
+function buildAreaManagerAssignments() {
+  const container = document.getElementById("areaManagerAssignments");
+  if (!container) return;
+  const theme = state.themes.areaManager;
+  const legendEntries = Object.keys(theme.legend || {});
+  const assignments = theme.data || {};
+  container.innerHTML = "";
+
+  if (!legendEntries.length) {
+    const empty = document.createElement("p");
+    empty.className = "helper";
+    empty.textContent = "Ajoutez une zone avant d'attribuer des pays.";
+    container.appendChild(empty);
+    return;
+  }
+
+  legendEntries.forEach((areaName) => {
+    const block = document.createElement("details");
+    block.className = "accordion";
+    block.open = true;
+    const summary = document.createElement("summary");
+    summary.innerHTML = `<span>${areaName}</span>`;
+    block.appendChild(summary);
+
+    const body = document.createElement("div");
+    body.className = "accordion__body";
+
+    CONTINENTS.forEach((continent) => {
+      const section = document.createElement("div");
+      section.className = "continent-block";
+      const header = document.createElement("div");
+      header.className = "continent-block__header";
+      const label = document.createElement("strong");
+      label.textContent = continent.label;
+      const toggle = document.createElement("button");
+      toggle.type = "button";
+      toggle.className = "ghost";
+      toggle.textContent = "Tout sélectionner";
+      toggle.addEventListener("click", () => {
+        const checkboxes = section.querySelectorAll("input.area-checkbox");
+        const conflictCountries = [];
+        checkboxes.forEach((checkbox) => {
+          const country = checkbox.dataset.country;
+          const existing = document.querySelector(
+            `input.area-checkbox[data-country='${country}']:checked:not([data-area='${areaName}'])`
+          );
+          if (existing) {
+            conflictCountries.push(country);
+            return;
+          }
+          checkbox.checked = true;
+        });
+        if (conflictCountries.length) {
+          alert(
+            `Ces pays sont déjà attribués : ${conflictCountries
+              .map((code) => COUNTRIES.find((c) => c.id === code)?.name || code)
+              .join(", ")}`
+          );
+        }
+      });
+      header.appendChild(label);
+      header.appendChild(toggle);
+
+      const list = document.createElement("div");
+      list.className = "continent-grid";
+      continent.countries.forEach((countryId) => {
+        const country = COUNTRIES.find((c) => c.id === countryId);
+        const wrapper = document.createElement("label");
+        wrapper.className = "pill-toggle";
+        const input = document.createElement("input");
+        input.type = "checkbox";
+        input.className = "area-checkbox";
+        input.dataset.area = areaName;
+        input.dataset.country = countryId;
+        input.checked = assignments[countryId] === areaName;
+        input.addEventListener("change", () => {
+          if (input.checked) {
+            const conflict = document.querySelector(
+              `input.area-checkbox[data-country='${countryId}']:checked:not([data-area='${areaName}'])`
+            );
+            if (conflict) {
+              alert(
+                `${country?.name || countryId} est déjà attribué à ${
+                  conflict.dataset.area
+                }.`
+              );
+              input.checked = false;
+            }
+          }
+        });
+        const text = document.createElement("span");
+        text.textContent = country?.name || countryId;
+        wrapper.appendChild(input);
+        wrapper.appendChild(text);
+        list.appendChild(wrapper);
+      });
+
+      section.appendChild(header);
+      section.appendChild(list);
+      body.appendChild(section);
+    });
+
+    block.appendChild(body);
+    container.appendChild(block);
+  });
+}
+
+function buildProspectingMatrix() {
+  const container = document.getElementById("prospectingMatrix");
+  if (!container) return;
+  container.innerHTML = "";
+  const theme = state.themes.prospecting;
+  const selected = theme?.data || {};
+  const label = Object.keys(theme.legend || {})[0] || "En prospection";
+
+  CONTINENTS.forEach((continent) => {
+    const section = document.createElement("div");
+    section.className = "continent-block";
+    const header = document.createElement("div");
+    header.className = "continent-block__header";
+    const title = document.createElement("strong");
+    title.textContent = continent.label;
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "ghost";
+    toggle.textContent = "Tout sélectionner";
+    toggle.addEventListener("click", () => {
+      const checkboxes = section.querySelectorAll("input[data-country]");
+      const shouldCheck = Array.from(checkboxes).some((cb) => !cb.checked);
+      checkboxes.forEach((cb) => {
+        cb.checked = shouldCheck;
+      });
+    });
+    header.appendChild(title);
+    header.appendChild(toggle);
+
+    const list = document.createElement("div");
+    list.className = "continent-grid";
+    continent.countries.forEach((countryId) => {
+      const country = COUNTRIES.find((c) => c.id === countryId);
+      const wrapper = document.createElement("label");
+      wrapper.className = "pill-toggle";
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.dataset.country = countryId;
+      checkbox.checked = selected[countryId] === label;
+      const text = document.createElement("span");
+      text.textContent = country?.name || countryId;
+      wrapper.appendChild(checkbox);
+      wrapper.appendChild(text);
+      list.appendChild(wrapper);
+    });
+    section.appendChild(header);
+    section.appendChild(list);
+    container.appendChild(section);
+  });
 }
 
 function isCommercializationSelected() {
@@ -2052,7 +2326,6 @@ function readCountryRevenues() {
 function handleBackOfficeSubmit(e) {
   e.preventDefault();
   const themeKey = document.getElementById("themeSelect").value;
-  const selectedCountries = getSelectedCountries();
   const theme = state.themes[themeKey];
 
   if (!theme) {
@@ -2060,12 +2333,14 @@ function handleBackOfficeSubmit(e) {
     return;
   }
 
-  if (!selectedCountries.length) {
-    alert("Merci de sélectionner au moins un pays");
-    return;
-  }
-
   if (themeKey === "countryProfile") {
+    const selectedCountries = getSelectedCountries();
+
+    if (!selectedCountries.length) {
+      alert("Merci de sélectionner au moins un pays");
+      return;
+    }
+
     const entityName = document.getElementById("field-entityName").value.trim();
     const entityType = document.getElementById("field-entityType")?.value || "subsidiary";
     const shareholding =
@@ -2147,18 +2422,79 @@ function handleBackOfficeSubmit(e) {
         ethicsPriorities: priorities
       };
     });
+  } else if (themeKey === "corruptionIndex") {
+    const inputs = document.querySelectorAll("#corruptionTable input[data-country]");
+    const corruptionData = {};
+    inputs.forEach((input) => {
+      const value = Number(input.value);
+      if (Number.isFinite(value)) {
+        corruptionData[input.dataset.country] = value;
+      }
+    });
+    theme.data = corruptionData;
+  } else if (themeKey === "areaManager") {
+    const checkboxes = Array.from(
+      document.querySelectorAll("#areaManagerAssignments input[type='checkbox'][data-country]")
+    );
+    const assignments = {};
+    const conflicts = [];
+    checkboxes.forEach((checkbox) => {
+      if (!checkbox.checked) return;
+      const country = checkbox.dataset.country;
+      const area = checkbox.dataset.area;
+      if (assignments[country] && assignments[country] !== area) {
+        conflicts.push(country);
+      }
+      assignments[country] = area;
+    });
+    if (conflicts.length) {
+      alert(
+        `Attention : ${conflicts
+          .map((c) => COUNTRIES.find((item) => item.id === c)?.name || c)
+          .join(", ")} est déjà attribué à un autre Area Manager.`
+      );
+      return;
+    }
+    theme.data = assignments;
+  } else if (themeKey === "prospecting") {
+    const checkboxes = document.querySelectorAll(
+      "#prospectingMatrix input[type='checkbox'][data-country]"
+    );
+    const prospecting = {};
+    const label = Object.keys(theme.legend || {})[0] || "En prospection";
+    checkboxes.forEach((checkbox) => {
+      if (checkbox.checked) {
+        prospecting[checkbox.dataset.country] = label;
+      }
+    });
+    theme.data = prospecting;
   } else if (theme.mode === "numeric") {
+    const selectedCountries = getSelectedCountries();
+    if (!selectedCountries.length) {
+      alert("Merci de sélectionner au moins un pays");
+      return;
+    }
     const val = Number(document.getElementById("field-numeric").value);
     if (!Number.isFinite(val)) return alert("Merci de saisir une valeur numérique valide");
     selectedCountries.forEach((countryId) => {
       theme.data[countryId] = val;
     });
   } else if (themeKey === "products") {
+    const selectedCountries = getSelectedCountries();
+    if (!selectedCountries.length) {
+      alert("Merci de sélectionner au moins un pays");
+      return;
+    }
     const raw = document.getElementById("field-products").value;
     selectedCountries.forEach((countryId) => {
       theme.data[countryId] = { products: raw.split(",").map((p) => p.trim()).filter(Boolean) };
     });
   } else if (theme.mode === "category") {
+    const selectedCountries = getSelectedCountries();
+    if (!selectedCountries.length) {
+      alert("Merci de sélectionner au moins un pays");
+      return;
+    }
     const categoryField = document.getElementById("field-category");
     if (!categoryField) {
       return alert("Merci d'ajouter au moins une liste pour continuer");
@@ -2196,12 +2532,13 @@ function setupBackOfficeTabs() {
   const panels = Array.from(document.querySelectorAll(".back-office__panel"));
   if (!tabs.length || !panels.length) return;
 
-  const activate = (panelId) => {
-    tabs.forEach((tab) => {
-      const isActive = tab.getAttribute("aria-controls") === panelId;
-      tab.classList.toggle("is-active", isActive);
-      tab.setAttribute("aria-selected", isActive.toString());
-      tab.tabIndex = isActive ? "0" : "-1";
+  const activate = (tab) => {
+    const panelId = tab.getAttribute("aria-controls");
+    tabs.forEach((button) => {
+      const isActive = button === tab;
+      button.classList.toggle("is-active", isActive);
+      button.setAttribute("aria-selected", isActive.toString());
+      button.tabIndex = isActive ? "0" : "-1";
     });
 
     panels.forEach((panel) => {
@@ -2215,20 +2552,30 @@ function setupBackOfficeTabs() {
         panel.setAttribute("aria-hidden", "true");
       }
     });
+
+    const themeKey = tab.dataset.theme;
+    if (themeKey) {
+      state.currentTheme = themeKey;
+      const themeSelect = document.getElementById("themeSelect");
+      if (themeSelect) {
+        themeSelect.value = themeKey;
+      }
+      selectTheme(themeKey);
+      renderDynamicFields();
+    }
   };
 
   const initialTab = tabs.find((tab) => tab.classList.contains("is-active")) || tabs[0];
   if (initialTab) {
-    activate(initialTab.getAttribute("aria-controls"));
+    activate(initialTab);
   }
 
   tabs.forEach((tab) => {
-    const targetId = tab.getAttribute("aria-controls");
-    tab.addEventListener("click", () => activate(targetId));
+    tab.addEventListener("click", () => activate(tab));
     tab.addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
-        activate(targetId);
+        activate(tab);
       }
     });
   });

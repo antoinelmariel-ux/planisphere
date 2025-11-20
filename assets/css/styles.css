@@ -510,6 +510,80 @@ label {
   gap: 10px;
 }
 
+.theme-context {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.corruption-table table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #ffffff;
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.corruption-table th,
+.corruption-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--stroke);
+}
+
+.corruption-table th {
+  text-align: left;
+  background: #f3f6fb;
+}
+
+.accordion {
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: var(--shadow);
+}
+
+.accordion summary {
+  cursor: pointer;
+  padding: 12px 14px;
+  font-weight: 600;
+}
+
+.accordion__body {
+  padding: 0 14px 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.continent-block {
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: #f8fafc;
+}
+
+.continent-block__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.continent-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+}
+
+.area-manager {
+  display: grid;
+  gap: 12px;
+}
+
 input, select, textarea {
   background: #ffffff;
   border: 1px solid var(--stroke);
