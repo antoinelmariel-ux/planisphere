@@ -866,6 +866,36 @@ textarea {
   gap: 10px;
 }
 
+.summary-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+  background: #ffffff;
+  gap: 12px;
+}
+
+.summary-row__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.summary-row .helper {
+  margin-top: 4px;
+}
+
+.ghost.danger {
+  color: #dc2626;
+}
+
 .footer {
   padding: 16px 24px;
   text-align: center;

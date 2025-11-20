@@ -1,4 +1,4 @@
-const APP_VERSION = "0.7.0";
+const APP_VERSION = "0.8.0";
 const WORLD_SVG_PATH = "assets/world.svg";
 const CORRUPTION_INDEX_PATH = "assets/ICP2024.json";
 
@@ -1522,6 +1522,26 @@ function buildLegendEditor(themeKey, theme) {
   return container;
 }
 
+function setFieldValue(id, value) {
+  const input = document.getElementById(id);
+  if (!input) return;
+  input.value = value ?? "";
+}
+
+function setCheckedValues(containerId, values) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const allowed = new Set(values || []);
+  container.querySelectorAll("input[type='checkbox']").forEach((input) => {
+    input.checked = allowed.has(input.value);
+  });
+}
+
+function setCountrySelection(countryIds = []) {
+  updateCountryTags(countryIds);
+  renderCountryRevenueInputs(countryIds);
+}
+
 function buildCreationButton(label) {
   const container = document.createElement("div");
   container.className = "theme-actions";
@@ -1986,6 +2006,7 @@ function renderDynamicFields() {
     buildPriorityChoices();
     setupActivityToggles();
     setupEntityRevenuePreview();
+    dynamic.appendChild(buildCountryProfileList());
   } else if (themeKey === "embargo") {
     if (theme.allowCustomLegend) {
       dynamic.appendChild(buildLegendEditor(themeKey, theme));
@@ -2002,6 +2023,7 @@ function renderDynamicFields() {
     const categoryField = buildCategoryField(themeKey, theme);
     dynamic.appendChild(categoryField);
     setupCountrySearch();
+    dynamic.appendChild(buildEmbargoSummary());
   } else if (themeKey === "corruptionIndex") {
     const tableWrapper = document.createElement("div");
     tableWrapper.className = "corruption-table";
@@ -2031,6 +2053,7 @@ function renderDynamicFields() {
     dynamic.appendChild(wrapper);
     buildProspectingMatrix();
     dynamic.appendChild(buildCreationButton("Créer des pays en prospection"));
+    dynamic.appendChild(buildProspectingSummary());
   } else if (theme.mode === "numeric") {
     dynamic.innerHTML = `<label>Valeur numérique<input id="field-numeric" type="number" step="0.1" /></label>`;
   } else if (themeKey === "products") {
@@ -2042,6 +2065,232 @@ function renderDynamicFields() {
     const categoryField = buildCategoryField(themeKey, theme);
     dynamic.appendChild(categoryField);
   }
+}
+
+function buildCountryProfileList() {
+  const container = document.createElement("div");
+  container.className = "back-office__section";
+
+  const header = document.createElement("header");
+  header.className = "back-office__section-header";
+  const heading = document.createElement("div");
+  heading.innerHTML = `<p class="eyebrow">Entités</p><h4>Entités créées</h4>`;
+  header.appendChild(heading);
+  container.appendChild(header);
+
+  const list = document.createElement("div");
+  list.className = "summary-list";
+
+  const entries = Object.entries(state.themes?.countryProfile?.data || {}).sort(
+    (a, b) => getProfileEntityKey(a[1]).localeCompare(getProfileEntityKey(b[1]))
+  );
+
+  if (!entries.length) {
+    const empty = document.createElement("p");
+    empty.className = "helper";
+    empty.textContent = "Aucune entité créée pour le moment.";
+    container.appendChild(empty);
+    return container;
+  }
+
+  entries.forEach(([countryId, profile]) => {
+    const row = document.createElement("div");
+    row.className = "summary-row";
+
+    const info = document.createElement("div");
+    const country = COUNTRIES.find((c) => c.id === countryId);
+    const revenue = formatRevenue(
+      extractRevenueValue(profile, countryId),
+      getProfileCurrency(profile)
+    );
+    const entityType = profile.entityType === "distributor" ? "Distributeur" : "Filiale / JV";
+    info.innerHTML = `<strong>${profile.entityName || "(Sans nom)"} – ${
+      country?.name || countryId
+    }</strong><p class="helper">${entityType} · ${revenue}</p>`;
+
+    const actions = document.createElement("div");
+    actions.className = "summary-row__actions";
+
+    const editButton = document.createElement("button");
+    editButton.type = "button";
+    editButton.className = "ghost";
+    editButton.textContent = "Modifier";
+    editButton.addEventListener("click", () => populateCountryProfileForm(countryId, profile));
+
+    const removeButton = document.createElement("button");
+    removeButton.type = "button";
+    removeButton.className = "ghost danger";
+    removeButton.textContent = "Supprimer";
+    removeButton.addEventListener("click", () => {
+      if (!confirm(`Supprimer l'entité ${profile.entityName || country?.name || countryId} ?`))
+        return;
+      delete state.themes.countryProfile.data[countryId];
+      persistThemes();
+      selectTheme("countryProfile");
+    });
+
+    actions.appendChild(editButton);
+    actions.appendChild(removeButton);
+
+    row.appendChild(info);
+    row.appendChild(actions);
+    list.appendChild(row);
+  });
+
+  container.appendChild(list);
+  return container;
+}
+
+function buildEmbargoSummary() {
+  const container = document.createElement("div");
+  container.className = "back-office__section";
+  const header = document.createElement("header");
+  header.className = "back-office__section-header";
+  const heading = document.createElement("div");
+  heading.innerHTML = `<p class="eyebrow">Embargo</p><h4>Listes créées</h4>`;
+  header.appendChild(heading);
+  container.appendChild(header);
+
+  const list = document.createElement("div");
+  list.className = "summary-list";
+  const assignments = state.themes?.embargo?.data || {};
+  const perList = {};
+
+  Object.entries(assignments).forEach(([countryId, listName]) => {
+    if (!perList[listName]) {
+      perList[listName] = [];
+    }
+    perList[listName].push(countryId);
+  });
+
+  const entries = Object.entries(perList).sort((a, b) => a[0].localeCompare(b[0]));
+  if (!entries.length) {
+    const empty = document.createElement("p");
+    empty.className = "helper";
+    empty.textContent = "Aucune liste d'embargo créée.";
+    container.appendChild(empty);
+    return container;
+  }
+
+  entries.forEach(([listName, countries]) => {
+    const row = document.createElement("div");
+    row.className = "summary-row";
+    const names = countries
+      .map((id) => COUNTRIES.find((c) => c.id === id)?.name || id)
+      .sort((a, b) => a.localeCompare(b));
+    const info = document.createElement("div");
+    info.innerHTML = `<strong>${listName}</strong><p class="helper">${names.join(", ")}</p>`;
+
+    const actions = document.createElement("div");
+    actions.className = "summary-row__actions";
+
+    const editButton = document.createElement("button");
+    editButton.type = "button";
+    editButton.className = "ghost";
+    editButton.textContent = "Modifier";
+    editButton.addEventListener("click", () => {
+      const select = document.getElementById("field-category");
+      if (select) {
+        select.value = listName;
+      }
+      setCountrySelection(countries);
+      const backOffice = document.getElementById("backOffice");
+      backOffice?.scrollTo({ top: 0, behavior: "smooth" });
+    });
+
+    const removeButton = document.createElement("button");
+    removeButton.type = "button";
+    removeButton.className = "ghost danger";
+    removeButton.textContent = "Supprimer";
+    removeButton.addEventListener("click", () => {
+      if (!confirm(`Supprimer la liste "${listName}" ?`)) return;
+      Object.entries(state.themes.embargo.data).forEach(([countryId, value]) => {
+        if (value === listName) {
+          delete state.themes.embargo.data[countryId];
+        }
+      });
+      persistThemes();
+      selectTheme("embargo");
+    });
+
+    actions.appendChild(editButton);
+    actions.appendChild(removeButton);
+    row.appendChild(info);
+    row.appendChild(actions);
+    list.appendChild(row);
+  });
+
+  container.appendChild(list);
+  return container;
+}
+
+function focusProspectingCountry(countryId) {
+  const checkbox = document.querySelector(`#prospectingMatrix input[data-country='${countryId}']`);
+  if (!checkbox) return;
+  checkbox.checked = true;
+  checkbox.scrollIntoView({ behavior: "smooth", block: "center" });
+  checkbox.focus();
+}
+
+function buildProspectingSummary() {
+  const container = document.createElement("div");
+  container.className = "back-office__section";
+  const header = document.createElement("header");
+  header.className = "back-office__section-header";
+  const heading = document.createElement("div");
+  heading.innerHTML = `<p class="eyebrow">Prospection</p><h4>Pays enregistrés</h4>`;
+  header.appendChild(heading);
+  container.appendChild(header);
+
+  const list = document.createElement("div");
+  list.className = "summary-list";
+  const data = state.themes?.prospecting?.data || {};
+  const entries = Object.keys(data).sort((a, b) => a.localeCompare(b));
+
+  if (!entries.length) {
+    const empty = document.createElement("p");
+    empty.className = "helper";
+    empty.textContent = "Aucun pays en prospection.";
+    container.appendChild(empty);
+    return container;
+  }
+
+  entries.forEach((countryId) => {
+    const row = document.createElement("div");
+    row.className = "summary-row";
+    const country = COUNTRIES.find((c) => c.id === countryId);
+    const info = document.createElement("div");
+    info.innerHTML = `<strong>${country?.name || countryId}</strong><p class="helper">En prospection</p>`;
+
+    const actions = document.createElement("div");
+    actions.className = "summary-row__actions";
+
+    const editButton = document.createElement("button");
+    editButton.type = "button";
+    editButton.className = "ghost";
+    editButton.textContent = "Modifier";
+    editButton.addEventListener("click", () => focusProspectingCountry(countryId));
+
+    const removeButton = document.createElement("button");
+    removeButton.type = "button";
+    removeButton.className = "ghost danger";
+    removeButton.textContent = "Supprimer";
+    removeButton.addEventListener("click", () => {
+      if (!confirm(`Retirer ${country?.name || countryId} de la prospection ?`)) return;
+      delete state.themes.prospecting.data[countryId];
+      persistThemes();
+      selectTheme("prospecting");
+    });
+
+    actions.appendChild(editButton);
+    actions.appendChild(removeButton);
+    row.appendChild(info);
+    row.appendChild(actions);
+    list.appendChild(row);
+  });
+
+  container.appendChild(list);
+  return container;
 }
 
 function buildCorruptionTable() {
@@ -2249,6 +2498,50 @@ function toggleEntityTypeFields() {
     activityGroup.style.display = type === "subsidiary" ? "" : "none";
   }
   toggleCommercialFields();
+}
+
+function populateCountryProfileForm(countryId, profile) {
+  if (!profile) return;
+  setFieldValue("field-entityName", profile.entityName || "");
+  setFieldValue("field-entityType", profile.entityType || "subsidiary");
+  toggleEntityTypeFields();
+  setFieldValue("field-shareholding", profile.shareholding || "100% LFB");
+  setFieldValue("field-generalManager", profile.generalManager || "");
+  setFieldValue("field-complianceContact", profile.complianceContact || "");
+  setFieldValue("field-contacts", profile.contacts || "");
+  setFieldValue(
+    "field-employees",
+    Number.isFinite(profile.employees) ? profile.employees : ""
+  );
+  setCheckedValues("activityGroup", profile.activities);
+  setCheckedValues("priorityChoices", profile.ethicsPriorities || profile.priorities);
+  setCheckedValues("subsidiaryMedicines", profile.medicines);
+  setCheckedValues("distributorMedicines", profile.medicines);
+  toggleCommercialFields();
+  const countries = [countryId].filter(Boolean);
+  setCountrySelection(countries);
+
+  const revenueCurrencyField =
+    profile.entityType === "distributor" ? "field-distributorCurrency" : "field-revenueCurrency";
+  setFieldValue(revenueCurrencyField, profile.revenueCurrency || "M€");
+
+  const countryRevenues = profile.countryRevenues || {};
+  renderCountryRevenueInputs(countries);
+  document.querySelectorAll("#countryRevenueList input[data-country]").forEach((input) => {
+    const raw = countryRevenues[input.dataset.country];
+    input.value = Number.isFinite(raw) ? raw : raw || "";
+  });
+
+  const globalRevenueField =
+    profile.entityType === "distributor" ? "field-distributorRevenue" : "field-globalRevenue";
+  setFieldValue(globalRevenueField, profile.globalRevenue ?? "");
+  setupEntityRevenuePreview();
+  const backOffice = document.getElementById("backOffice");
+  if (backOffice) {
+    backOffice.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  const entityInput = document.getElementById("field-entityName");
+  entityInput?.focus();
 }
 
 function setupActivityToggles() {
