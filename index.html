@@ -71,21 +71,49 @@
 
     <form id="backOfficeForm" class="back-office__form">
       <section id="panel-config" class="back-office__panel is-active" role="tabpanel" aria-labelledby="tab-entities">
-        <div class="theme-context">
-          <div>
-            <p class="eyebrow">Thématique active</p>
-            <h4 id="themeTitle">Entités</h4>
-          </div>
-          <select id="themeSelect" class="visually-hidden" aria-hidden="true" tabindex="-1"></select>
-        </div>
+        <div class="config-grid">
+          <aside id="entitySidebar" class="entity-sidebar" aria-label="Liste des entités">
+            <div class="entity-sidebar__header">
+              <div>
+                <p class="eyebrow">Entités</p>
+                <h4>Vos entités</h4>
+              </div>
+              <button type="button" id="newEntityButton" class="ghost">Nouvelle entité</button>
+            </div>
+            <div class="entity-sidebar__controls">
+              <label for="entitySearch">Recherche</label>
+              <input id="entitySearch" type="search" placeholder="Nom, pays ou code" />
+              <label for="entityTypeFilter">Filtrer</label>
+              <select id="entityTypeFilter">
+                <option value="all">Tous les types</option>
+                <option value="subsidiary">Filiale / JV</option>
+                <option value="distributor">Distributeur</option>
+              </select>
+            </div>
+            <div id="entityList" class="entity-list" aria-live="polite"></div>
+          </aside>
 
-        <div id="dynamicFields"></div>
+          <div class="config-detail">
+            <div class="theme-context">
+              <div>
+                <p class="eyebrow">Thématique active</p>
+                <h4 id="themeTitle">Entités</h4>
+              </div>
+              <select id="themeSelect" class="visually-hidden" aria-hidden="true" tabindex="-1"></select>
+            </div>
 
-        <div class="form-actions">
-          <button type="button" id="resetData" class="ghost">Réinitialiser les données par défaut</button>
-          <div class="form-actions__group">
-            <button type="button" id="exportData" class="ghost">Exporter les données</button>
-            <button type="submit" class="primary">Enregistrer</button>
+            <div id="dynamicFields"></div>
+
+            <div class="form-actions">
+              <div class="form-actions__group form-actions__group--left">
+                <button type="button" id="resetData" class="ghost">Réinitialiser les données par défaut</button>
+                <button type="button" id="deleteEntity" class="ghost danger">Supprimer l'entité</button>
+              </div>
+              <div class="form-actions__group">
+                <button type="button" id="exportData" class="ghost">Exporter les données</button>
+                <button type="submit" class="primary">Enregistrer</button>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -129,7 +157,7 @@
   </aside>
 
   <footer class="footer">
-    <p>Planisphère compliance – version <strong id="versionLabel">0.8.4</strong></p>
+    <p>Planisphère compliance – version <strong id="versionLabel">0.9.0</strong></p>
   </footer>
 
   <script src="assets/js/app.js"></script>
