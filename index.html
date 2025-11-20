@@ -54,23 +54,26 @@
         <select id="themeSelect"></select>
       </label>
 
-      <label>
-        Pays
-        <select id="countrySelect"></select>
-      </label>
+      <fieldset class="country-fieldset">
+        <legend>Pays (sélection par continent)</legend>
+        <div id="countrySelection" class="country-selector"></div>
+      </fieldset>
 
       <div id="dynamicFields"></div>
 
       <div class="form-actions">
         <button type="button" id="resetData" class="ghost">Réinitialiser les données par défaut</button>
-        <button type="submit" class="primary">Enregistrer</button>
+        <div class="form-actions__group">
+          <button type="button" id="exportData" class="ghost">Exporter les données</button>
+          <button type="submit" class="primary">Enregistrer</button>
+        </div>
       </div>
     </form>
     <p class="helper">Les modifications sont conservées dans votre navigateur (localStorage) pour un usage 100% local.</p>
   </aside>
 
   <footer class="footer">
-    <p>Planisphère compliance – version <strong id="versionLabel">0.3.5</strong></p>
+    <p>Planisphère compliance – version <strong id="versionLabel">0.3.6</strong></p>
   </footer>
 
   <script src="assets/js/app.js"></script>

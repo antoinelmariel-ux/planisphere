@@ -1,4 +1,4 @@
-const APP_VERSION = "0.3.5";
+const APP_VERSION = "0.3.6";
 const WORLD_SVG_PATH = "assets/world.svg";
 const COUNTRY_ID_MAPPINGS = {
   US: "US",
@@ -66,6 +66,34 @@ const COUNTRIES = [
   { id: "NZ", name: "Nouvelle-Zélande", svgKeys: ["New Zealand", "NZ"] },
   { id: "SG", name: "Singapour", svgKeys: ["Singapore", "SG"] },
   { id: "ID", name: "Indonésie", svgKeys: ["Indonesia", "ID"] }
+];
+
+const CONTINENTS = [
+  {
+    id: "europe",
+    label: "Europe",
+    countries: ["GB", "FR", "DE", "ES", "IT", "NO", "SE", "TR"]
+  },
+  {
+    id: "americas",
+    label: "Amériques",
+    countries: ["US", "CA", "MX", "BR", "AR", "CO", "PE"]
+  },
+  {
+    id: "africa",
+    label: "Afrique",
+    countries: ["DZ", "MA", "NG", "ZA", "EG"]
+  },
+  {
+    id: "middle-east",
+    label: "Moyen-Orient",
+    countries: ["SA", "AE"]
+  },
+  {
+    id: "asia-pacific",
+    label: "Asie-Pacifique",
+    countries: ["IN", "CN", "JP", "KR", "SG", "ID", "AU", "NZ"]
+  }
 ];
 
 const DEFAULT_THEMES = {
@@ -595,18 +623,83 @@ function buildBackOffice() {
     themeSelect.appendChild(option);
   });
 
-  const countrySelect = document.getElementById("countrySelect");
-  countrySelect.innerHTML = "";
-  COUNTRIES.forEach((country) => {
-    const option = document.createElement("option");
-    option.value = country.id;
-    option.textContent = country.name;
-    countrySelect.appendChild(option);
-  });
+  buildCountrySelector();
 
   themeSelect.value = state.currentTheme;
   renderDynamicFields();
   themeSelect.addEventListener("change", renderDynamicFields);
+}
+
+function getSelectedCountries() {
+  return Array.from(document.querySelectorAll(".country-checkbox:checked")).map(
+    (input) => input.value
+  );
+}
+
+function updateContinentToggle(toggle, group) {
+  const checkboxes = Array.from(group.querySelectorAll(".country-checkbox"));
+  const checkedCount = checkboxes.filter((box) => box.checked).length;
+  toggle.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
+  toggle.checked = checkedCount === checkboxes.length;
+}
+
+function buildCountrySelector() {
+  const container = document.getElementById("countrySelection");
+  if (!container) return;
+  container.innerHTML = "";
+
+  CONTINENTS.forEach((continent) => {
+    const group = document.createElement("div");
+    group.className = "continent-group";
+
+    const header = document.createElement("div");
+    header.className = "continent-header";
+
+    const toggle = document.createElement("input");
+    toggle.type = "checkbox";
+    toggle.id = `continent-${continent.id}`;
+
+    toggle.addEventListener("change", () => {
+      const checked = toggle.checked;
+      group.querySelectorAll(".country-checkbox").forEach((box) => {
+        box.checked = checked;
+      });
+      toggle.indeterminate = false;
+    });
+
+    const headerLabel = document.createElement("label");
+    headerLabel.setAttribute("for", toggle.id);
+    headerLabel.textContent = `${continent.label} – tout sélectionner`;
+
+    header.appendChild(headerLabel);
+    header.appendChild(toggle);
+    group.appendChild(header);
+
+    const list = document.createElement("div");
+    list.className = "country-list";
+
+    continent.countries.forEach((countryId) => {
+      const country = COUNTRIES.find((c) => c.id === countryId);
+      const countryLabel = document.createElement("label");
+      countryLabel.className = "country-option";
+
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.value = countryId;
+      checkbox.className = "country-checkbox";
+      checkbox.addEventListener("change", () => updateContinentToggle(toggle, group));
+
+      const name = document.createElement("span");
+      name.textContent = country?.name || countryId;
+
+      countryLabel.appendChild(checkbox);
+      countryLabel.appendChild(name);
+      list.appendChild(countryLabel);
+    });
+
+    group.appendChild(list);
+    container.appendChild(group);
+  });
 }
 
 function renderDynamicFields() {
@@ -652,33 +745,55 @@ function renderDynamicFields() {
 function handleBackOfficeSubmit(e) {
   e.preventDefault();
   const themeKey = document.getElementById("themeSelect").value;
-  const countryId = document.getElementById("countrySelect").value;
+  const selectedCountries = getSelectedCountries();
   const theme = state.themes[themeKey];
 
-  if (themeKey === "countryProfile") {
-    theme.data[countryId] = {
-      employees: Number(document.getElementById("field-employees").value || 0),
-      revenue: document.getElementById("field-revenue").value || "N/A",
-      activity: document.getElementById("field-activity").value || "",
-      country: COUNTRIES.find((c) => c.id === countryId)?.name || countryId,
-      complianceLead: document.getElementById("field-complianceLead").value || "",
-      legal: document.getElementById("field-legal").value || ""
-    };
-  } else if (theme.mode === "numeric") {
-    const val = Number(document.getElementById("field-numeric").value);
-    if (!Number.isFinite(val)) return alert("Merci de saisir une valeur numérique valide");
-    theme.data[countryId] = val;
-  } else if (themeKey === "products") {
-    const raw = document.getElementById("field-products").value;
-    theme.data[countryId] = { products: raw.split(",").map((p) => p.trim()).filter(Boolean) };
-  } else if (theme.mode === "category") {
-    const category = document.getElementById("field-category").value;
-    theme.data[countryId] = category;
+  if (!selectedCountries.length) {
+    alert("Merci de sélectionner au moins un pays");
+    return;
   }
+
+  selectedCountries.forEach((countryId) => {
+    if (themeKey === "countryProfile") {
+      theme.data[countryId] = {
+        employees: Number(document.getElementById("field-employees").value || 0),
+        revenue: document.getElementById("field-revenue").value || "N/A",
+        activity: document.getElementById("field-activity").value || "",
+        country: COUNTRIES.find((c) => c.id === countryId)?.name || countryId,
+        complianceLead: document.getElementById("field-complianceLead").value || "",
+        legal: document.getElementById("field-legal").value || ""
+      };
+    } else if (theme.mode === "numeric") {
+      const val = Number(document.getElementById("field-numeric").value);
+      if (!Number.isFinite(val)) return alert("Merci de saisir une valeur numérique valide");
+      theme.data[countryId] = val;
+    } else if (themeKey === "products") {
+      const raw = document.getElementById("field-products").value;
+      theme.data[countryId] = { products: raw.split(",").map((p) => p.trim()).filter(Boolean) };
+    } else if (theme.mode === "category") {
+      const category = document.getElementById("field-category").value;
+      theme.data[countryId] = category;
+    }
+  });
 
   state.themes = { ...state.themes, [themeKey]: { ...theme, data: { ...theme.data } } };
   persistThemes();
   selectTheme(themeKey);
+}
+
+function exportThemes() {
+  const payload = {
+    version: APP_VERSION,
+    exportedAt: new Date().toISOString(),
+    themes: state.themes
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "planisphere-data.json";
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 function setupBackOffice() {
@@ -695,6 +810,8 @@ function setupBackOffice() {
     buildBackOffice();
     selectTheme(state.currentTheme);
   });
+  const exportButton = document.getElementById("exportData");
+  exportButton.addEventListener("click", exportThemes);
 }
 
 function applyViewBox(value) {
