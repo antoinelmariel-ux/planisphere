@@ -1,4 +1,4 @@
-const APP_VERSION = "0.8.1";
+const APP_VERSION = "0.8.2";
 const WORLD_SVG_PATH = "assets/world.svg";
 const CORRUPTION_INDEX_PATH = "assets/ICP2024.json";
 
@@ -1165,6 +1165,17 @@ function refreshMap() {
   hideTooltip();
 }
 
+function handleThemeSelectChange() {
+  renderDynamicFields();
+}
+
+function setupThemeSelectListener() {
+  const themeSelect = document.getElementById("themeSelect");
+  if (!themeSelect) return;
+  themeSelect.removeEventListener("change", handleThemeSelectChange);
+  themeSelect.addEventListener("change", handleThemeSelectChange);
+}
+
 function setupBurger() {
   const burger = document.getElementById("burgerButton");
   const menu = document.getElementById("themeMenu");
@@ -1180,6 +1191,7 @@ function setupBurger() {
 function buildBackOffice() {
   const themeSelect = document.getElementById("themeSelect");
   if (!themeSelect) return;
+  themeSelect.removeEventListener("change", handleThemeSelectChange);
   themeSelect.innerHTML = "";
   const hasThemes = Object.keys(state.themes).length > 0;
   if (!hasThemes) {
@@ -1203,7 +1215,7 @@ function buildBackOffice() {
   state.currentTheme = state.currentTheme ?? Object.keys(state.themes)[0];
   themeSelect.value = state.currentTheme;
   renderDynamicFields();
-  themeSelect.addEventListener("change", renderDynamicFields);
+  setupThemeSelectListener();
 }
 
 function createCatalogRow(label, catalogKey) {
