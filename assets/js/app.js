@@ -1,4 +1,4 @@
-const APP_VERSION = "0.4.5";
+const APP_VERSION = "0.4.6";
 const WORLD_SVG_PATH = "assets/world.svg";
 const DEFAULT_MEDICINES = [
   "Antibiotiques",
@@ -548,6 +548,31 @@ const state = {
   defaultViewBox: VIEWBOX_FALLBACK
 };
 
+const CATALOG_CONFIG = {
+  medicine: {
+    stateKey: "medicines",
+    listId: "medicineList",
+    statusId: "medicineStatus",
+    label: "médicament",
+    persist: persistMedicines,
+    refresh: () => {
+      buildMedicineCatalog();
+      buildMedicineChoices();
+    }
+  },
+  priority: {
+    stateKey: "priorities",
+    listId: "priorityList",
+    statusId: "priorityStatus",
+    label: "priorité",
+    persist: persistPriorities,
+    refresh: () => {
+      buildPriorityCatalog();
+      buildPriorityChoices();
+    }
+  }
+};
+
 function showResourceNotice(message) {
   const notice = document.getElementById("resourceNotice");
   if (!notice) return;
@@ -683,6 +708,76 @@ function persistPriorities() {
     localStorage.setItem("priorityCatalog", JSON.stringify(state.priorities));
   } catch (error) {
     console.warn("Impossible de sauvegarder les priorités", error);
+  }
+}
+
+function getCatalogConfig(catalogKey) {
+  return CATALOG_CONFIG[catalogKey] || {};
+}
+
+function getCatalogEntries(catalogKey) {
+  const config = getCatalogConfig(catalogKey);
+  const entries = state[config.stateKey];
+  return Array.isArray(entries) ? entries : [];
+}
+
+function setCatalogEntries(catalogKey, entries) {
+  const config = getCatalogConfig(catalogKey);
+  if (!config.stateKey) return;
+  state[config.stateKey] = entries;
+}
+
+function refreshCatalogViews(catalogKey) {
+  const config = getCatalogConfig(catalogKey);
+  if (typeof config.persist === "function") config.persist();
+  if (typeof config.refresh === "function") config.refresh();
+}
+
+function setCatalogStatus(catalogKey, type, message) {
+  const config = getCatalogConfig(catalogKey);
+  const status = document.getElementById(config.statusId);
+  if (!status) return;
+  status.textContent = message;
+  status.className = `catalog-status is-${type}`;
+}
+
+function validateCatalogEntry(label, catalogKey, currentLabel = "") {
+  const value = label.trim();
+  const config = getCatalogConfig(catalogKey);
+  const entries = getCatalogEntries(catalogKey);
+  if (!value) {
+    setCatalogStatus(catalogKey, "error", "Le champ ne peut pas être vide.");
+    return null;
+  }
+
+  const normalizedList = entries
+    .filter((entry) => entry !== currentLabel)
+    .map((entry) => entry.toLowerCase());
+  const normalized = value.toLowerCase();
+  if (normalizedList.includes(normalized)) {
+    setCatalogStatus(
+      catalogKey,
+      "error",
+      `Ce ${config.label || "élément"} existe déjà dans le catalogue.`
+    );
+    return null;
+  }
+
+  return value;
+}
+
+function withProcessing(button, callback) {
+  if (button) {
+    button.disabled = true;
+    button.classList.add("is-loading");
+  }
+  try {
+    callback();
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.classList.remove("is-loading");
+    }
   }
 }
 
@@ -1051,56 +1146,128 @@ function buildBackOffice() {
   themeSelect.addEventListener("change", renderDynamicFields);
 }
 
-function buildMedicineCatalog() {
-  const list = document.getElementById("medicineList");
+function createCatalogRow(label, catalogKey) {
+  const row = document.createElement("div");
+  row.className = "catalog-row";
+
+  const text = document.createElement("span");
+  text.className = "catalog-row__label";
+  text.textContent = label;
+
+  const actions = document.createElement("div");
+  actions.className = "catalog-row__actions";
+
+  const editButton = document.createElement("button");
+  editButton.type = "button";
+  editButton.className = "ghost catalog-row__action";
+  editButton.textContent = "Éditer";
+  editButton.addEventListener("click", () => editCatalogEntry(catalogKey, label));
+
+  const removeButton = document.createElement("button");
+  removeButton.type = "button";
+  removeButton.className = "ghost catalog-row__action catalog-row__action--delete";
+  removeButton.textContent = "Supprimer";
+  removeButton.addEventListener("click", () => removeCatalogEntry(catalogKey, label));
+
+  actions.appendChild(editButton);
+  actions.appendChild(removeButton);
+
+  row.appendChild(text);
+  row.appendChild(actions);
+
+  return row;
+}
+
+function buildCatalogList(catalogKey) {
+  const config = getCatalogConfig(catalogKey);
+  const list = document.getElementById(config.listId);
   if (!list) return;
+  const entries = getCatalogEntries(catalogKey);
   list.innerHTML = "";
 
-  if (!state.medicines.length) {
+  if (!entries.length) {
     const empty = document.createElement("p");
     empty.className = "helper";
-    empty.textContent = "Aucun médicament référencé.";
+    empty.textContent = "Aucun élément pour le moment.";
     list.appendChild(empty);
     return;
   }
 
-  state.medicines.forEach((medicine) => {
-    const pill = document.createElement("span");
-    pill.className = "pill";
-    pill.textContent = medicine;
-
-    const removeButton = document.createElement("button");
-    removeButton.type = "button";
-    removeButton.setAttribute("aria-label", `Retirer ${medicine}`);
-    removeButton.textContent = "×";
-    removeButton.addEventListener("click", () => removeMedicine(medicine));
-
-    pill.appendChild(removeButton);
-    list.appendChild(pill);
+  entries.forEach((entry) => {
+    list.appendChild(createCatalogRow(entry, catalogKey));
   });
 }
 
-function addMedicine(name) {
-  const label = name.trim();
-  if (!label) {
-    alert("Merci d'indiquer un médicament à ajouter");
-    return;
-  }
-  if (state.medicines.includes(label)) {
-    alert("Ce médicament est déjà présent dans la liste");
-    return;
-  }
-  state.medicines = [...state.medicines, label].sort((a, b) => a.localeCompare(b));
-  persistMedicines();
-  buildMedicineCatalog();
-  buildMedicineChoices();
+function addCatalogEntry(catalogKey, value) {
+  const config = getCatalogConfig(catalogKey);
+  const label = validateCatalogEntry(value, catalogKey);
+  if (!label) return;
+
+  const entries = [...getCatalogEntries(catalogKey), label].sort((a, b) =>
+    a.localeCompare(b)
+  );
+  setCatalogEntries(catalogKey, entries);
+  refreshCatalogViews(catalogKey);
+  setCatalogStatus(
+    catalogKey,
+    "success",
+    `${config.label || "Entrée"} ajouté(e). Sauvegarde locale mise à jour.`
+  );
 }
 
-function removeMedicine(name) {
-  state.medicines = state.medicines.filter((medicine) => medicine !== name);
-  persistMedicines();
-  buildMedicineCatalog();
-  buildMedicineChoices();
+function editCatalogEntry(catalogKey, currentLabel) {
+  const config = getCatalogConfig(catalogKey);
+  const nextValue = prompt(
+    `Modifier le ${config.label || "élément"} :`,
+    currentLabel
+  );
+  if (nextValue === null) return;
+
+  const label = validateCatalogEntry(nextValue, catalogKey, currentLabel);
+  if (!label) return;
+
+  if (label === currentLabel) {
+    setCatalogStatus(catalogKey, "info", "Aucun changement détecté.");
+    return;
+  }
+
+  if (
+    !confirm(
+      `Confirmez-vous la modification de "${currentLabel}" en "${label}" ?`
+    )
+  ) {
+    return;
+  }
+
+  const entries = getCatalogEntries(catalogKey)
+    .map((entry) => (entry === currentLabel ? label : entry))
+    .sort((a, b) => a.localeCompare(b));
+
+  setCatalogEntries(catalogKey, entries);
+  refreshCatalogViews(catalogKey);
+  setCatalogStatus(
+    catalogKey,
+    "success",
+    `${config.label || "Entrée"} mise à jour. Sauvegarde locale mise à jour.`
+  );
+}
+
+function removeCatalogEntry(catalogKey, name) {
+  const config = getCatalogConfig(catalogKey);
+  if (!confirm(`Supprimer "${name}" du catalogue ?`)) return;
+
+  const entries = getCatalogEntries(catalogKey).filter((entry) => entry !== name);
+  setCatalogEntries(catalogKey, entries);
+  refreshCatalogViews(catalogKey);
+  setCatalogStatus(
+    catalogKey,
+    "success",
+    `${config.label || "Entrée"} supprimé(e). Sauvegarde locale mise à jour.`
+  );
+}
+
+function buildMedicineCatalog() {
+  buildCatalogList("medicine");
 }
 
 function setupMedicineCatalog() {
@@ -1108,11 +1275,12 @@ function setupMedicineCatalog() {
   const addButton = document.getElementById("addMedicine");
   if (!input || !addButton) return;
 
-  const submit = () => {
-    addMedicine(input.value);
-    input.value = "";
-    input.focus();
-  };
+  const submit = () =>
+    withProcessing(addButton, () => {
+      addCatalogEntry("medicine", input.value);
+      input.value = "";
+      input.focus();
+    });
 
   addButton.addEventListener("click", submit);
   input.addEventListener("keydown", (event) => {
@@ -1126,55 +1294,7 @@ function setupMedicineCatalog() {
 }
 
 function buildPriorityCatalog() {
-  const list = document.getElementById("priorityList");
-  if (!list) return;
-  list.innerHTML = "";
-
-  if (!state.priorities.length) {
-    const empty = document.createElement("p");
-    empty.className = "helper";
-    empty.textContent = "Aucune priorité configurée.";
-    list.appendChild(empty);
-    return;
-  }
-
-  state.priorities.forEach((priority) => {
-    const pill = document.createElement("span");
-    pill.className = "pill";
-    pill.textContent = priority;
-
-    const removeButton = document.createElement("button");
-    removeButton.type = "button";
-    removeButton.setAttribute("aria-label", `Retirer ${priority}`);
-    removeButton.textContent = "×";
-    removeButton.addEventListener("click", () => removePriority(priority));
-
-    pill.appendChild(removeButton);
-    list.appendChild(pill);
-  });
-}
-
-function addPriority(name) {
-  const label = name.trim();
-  if (!label) {
-    alert("Merci d'indiquer une priorité à ajouter");
-    return;
-  }
-  if (state.priorities.includes(label)) {
-    alert("Cette priorité est déjà présente dans la liste");
-    return;
-  }
-  state.priorities = [...state.priorities, label].sort((a, b) => a.localeCompare(b));
-  persistPriorities();
-  buildPriorityCatalog();
-  buildPriorityChoices();
-}
-
-function removePriority(name) {
-  state.priorities = state.priorities.filter((priority) => priority !== name);
-  persistPriorities();
-  buildPriorityCatalog();
-  buildPriorityChoices();
+  buildCatalogList("priority");
 }
 
 function setupPriorityCatalog() {
@@ -1182,11 +1302,12 @@ function setupPriorityCatalog() {
   const addButton = document.getElementById("addPriority");
   if (!input || !addButton) return;
 
-  const submit = () => {
-    addPriority(input.value);
-    input.value = "";
-    input.focus();
-  };
+  const submit = () =>
+    withProcessing(addButton, () => {
+      addCatalogEntry("priority", input.value);
+      input.value = "";
+      input.focus();
+    });
 
   addButton.addEventListener("click", submit);
   input.addEventListener("keydown", (event) => {
