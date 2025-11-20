@@ -94,17 +94,11 @@
           </aside>
 
           <div class="config-detail">
-            <div class="theme-context">
-              <div>
-                <p class="eyebrow">Thématique active</p>
-                <h4 id="themeTitle">Entités</h4>
-              </div>
-              <select id="themeSelect" class="visually-hidden" aria-hidden="true" tabindex="-1"></select>
-            </div>
+            <select id="themeSelect" class="visually-hidden" aria-hidden="true" tabindex="-1"></select>
 
-            <div id="dynamicFields"></div>
+            <div id="dynamicFields" class="dynamic-fields"></div>
 
-            <div class="form-actions sticky-action-bar" role="status" aria-live="polite">
+            <div class="form-actions sticky-action-bar" id="formActions" role="status" aria-live="polite">
               <div class="form-actions__group form-actions__group--left">
                 <button type="button" id="resetData" class="ghost">Réinitialiser les données par défaut</button>
                 <button type="button" id="deleteEntity" class="ghost danger">Supprimer l'entité</button>
@@ -158,7 +152,7 @@
   </aside>
 
   <footer class="footer">
-    <p>Planisphère compliance – version <strong id="versionLabel">0.10.0</strong></p>
+    <p>Planisphère compliance – version <strong id="versionLabel">0.11.0</strong></p>
   </footer>
 
   <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>

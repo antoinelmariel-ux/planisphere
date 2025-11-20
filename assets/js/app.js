@@ -1,4 +1,4 @@
-const APP_VERSION = "0.10.0";
+const APP_VERSION = "0.11.0";
 const WORLD_SVG_PATH = "assets/world.svg";
 const CORRUPTION_INDEX_PATH = "assets/ICP2024.json";
 
@@ -1686,7 +1686,24 @@ function resetCountryProfileForm() {
   setupEntityRevenuePreview();
 }
 
-function buildCreationButton(label) {
+function setCreationPanelVisibility(panel, isVisible) {
+  if (!panel) return;
+  panel.classList.toggle("is-visible", !!isVisible);
+}
+
+function showCreationPanel() {
+  const panel = document.getElementById("creationPanel");
+  setCreationPanelVisibility(panel, true);
+  setFormActionsVisibility(true);
+}
+
+function setFormActionsVisibility(isVisible) {
+  const actions = document.getElementById("formActions");
+  if (!actions) return;
+  actions.classList.toggle("is-hidden", !isVisible);
+}
+
+function buildCreationButton(label, onClick) {
   const container = document.createElement("div");
   container.className = "theme-actions";
 
@@ -1694,7 +1711,10 @@ function buildCreationButton(label) {
   button.type = "button";
   button.className = "primary";
   button.textContent = label;
-  button.addEventListener("click", () => handleBackOfficeSubmit(new Event("submit")));
+  button.addEventListener("click", () => {
+    showCreationPanel();
+    onClick?.();
+  });
 
   container.appendChild(button);
   return container;
@@ -2077,11 +2097,7 @@ function renderDynamicFields() {
   const theme = state.themes[themeKey];
   const dynamic = document.getElementById("dynamicFields");
   dynamic.innerHTML = "";
-
-  const title = document.getElementById("themeTitle");
-  if (title) {
-    title.textContent = theme?.label || "Configuration";
-  }
+  setFormActionsVisibility(false);
 
   if (!theme) {
     const empty = document.createElement("p");
@@ -2092,7 +2108,10 @@ function renderDynamicFields() {
   }
 
   if (themeKey === "countryProfile") {
-    dynamic.innerHTML = `
+    const creationPanel = document.createElement("div");
+    creationPanel.id = "creationPanel";
+    creationPanel.className = "creation-panel";
+    creationPanel.innerHTML = `
       <p class="helper">Créez ou modifiez vos filiales, JV ou distributeurs.</p>
       <label>Nom de l'entité<input id="field-entityName" type="text" /></label>
       <label>Type d'entité
@@ -2144,7 +2163,18 @@ function renderDynamicFields() {
         <div id="priorityChoices" class="pill-picker"></div>
       </div>
     `;
-    dynamic.prepend(buildCreationButton("Créer l'entité"));
+
+    dynamic.appendChild(buildCountryProfileList());
+    dynamic.appendChild(
+      buildCreationButton("Créer l'entité", () => {
+        state.selectedEntityId = null;
+        resetCountryProfileForm();
+        renderEntitySidebar();
+        const field = document.getElementById("field-entityName");
+        field?.focus();
+      })
+    );
+    dynamic.appendChild(creationPanel);
     setupCountrySearch();
     buildMedicineChoices();
     buildPriorityChoices();
@@ -2153,10 +2183,16 @@ function renderDynamicFields() {
     setupEntitySidebar();
     renderEntitySidebar();
     populateSelectedEntity();
+    const hasEntities = Object.keys(theme.data || {}).length > 0;
+    const shouldShowForm = !!state.selectedEntityId || !hasEntities;
+    setCreationPanelVisibility(creationPanel, shouldShowForm);
+    setFormActionsVisibility(shouldShowForm);
   } else if (themeKey === "embargo") {
-    dynamic.appendChild(buildCreationButton("Créer une liste d'embargo"));
+    const creationPanel = document.createElement("div");
+    creationPanel.id = "creationPanel";
+    creationPanel.className = "creation-panel";
     if (theme.allowCustomLegend) {
-      dynamic.appendChild(buildLegendEditor(themeKey, theme));
+      creationPanel.appendChild(buildLegendEditor(themeKey, theme));
     }
     const picker = document.createElement("div");
     picker.className = "country-chip-selector";
@@ -2166,11 +2202,23 @@ function renderDynamicFields() {
       <datalist id="countryOptions"></datalist>
       <div id="countryTags" class="tag-container" aria-live="polite"></div>
     `;
-    dynamic.appendChild(picker);
+    creationPanel.appendChild(picker);
     const categoryField = buildCategoryField(themeKey, theme);
-    dynamic.appendChild(categoryField);
-    setupCountrySearch();
+    creationPanel.appendChild(categoryField);
     dynamic.appendChild(buildEmbargoSummary());
+    dynamic.appendChild(
+      buildCreationButton("Créer une liste d'embargo", () => {
+        setCountrySelection([]);
+        showCreationPanel();
+        const search = document.getElementById("countrySearch");
+        search?.focus();
+      })
+    );
+    dynamic.appendChild(creationPanel);
+    setupCountrySearch();
+    const shouldShowForm = !Object.keys(theme.data || {}).length;
+    setCreationPanelVisibility(creationPanel, shouldShowForm);
+    setFormActionsVisibility(shouldShowForm);
   } else if (themeKey === "corruptionIndex") {
     const tableWrapper = document.createElement("div");
     tableWrapper.className = "corruption-table";
@@ -2184,6 +2232,7 @@ function renderDynamicFields() {
     tableWrapper.appendChild(table);
     dynamic.appendChild(tableWrapper);
     buildCorruptionTable();
+    setFormActionsVisibility(true);
   } else if (themeKey === "areaManager") {
     if (theme.allowCustomLegend) {
       dynamic.appendChild(buildLegendEditor(themeKey, theme));
@@ -2193,24 +2242,35 @@ function renderDynamicFields() {
     container.className = "area-manager";
     dynamic.appendChild(container);
     buildAreaManagerAssignments();
+    setFormActionsVisibility(true);
   } else if (themeKey === "prospecting") {
+    const creationPanel = document.createElement("div");
+    creationPanel.id = "creationPanel";
+    creationPanel.className = "creation-panel";
     const wrapper = document.createElement("div");
     wrapper.id = "prospectingMatrix";
     wrapper.className = "area-manager";
-    dynamic.appendChild(wrapper);
-    buildProspectingMatrix();
-    dynamic.prepend(buildCreationButton("Créer des pays en prospection"));
+    creationPanel.appendChild(wrapper);
     dynamic.appendChild(buildProspectingSummary());
+    dynamic.appendChild(buildCreationButton("Créer des pays en prospection"));
+    dynamic.appendChild(creationPanel);
+    buildProspectingMatrix();
+    const shouldShowForm = !Object.keys(theme.data || {}).length;
+    setCreationPanelVisibility(creationPanel, shouldShowForm);
+    setFormActionsVisibility(shouldShowForm);
   } else if (theme.mode === "numeric") {
     dynamic.innerHTML = `<label>Valeur numérique<input id="field-numeric" type="number" step="0.1" /></label>`;
+    setFormActionsVisibility(true);
   } else if (themeKey === "products") {
     dynamic.innerHTML = `<label>Produits (séparés par des virgules)<textarea id="field-products"></textarea></label>`;
+    setFormActionsVisibility(true);
   } else if (theme.mode === "category") {
     if (theme.allowCustomLegend) {
       dynamic.appendChild(buildLegendEditor(themeKey, theme));
     }
     const categoryField = buildCategoryField(themeKey, theme);
     dynamic.appendChild(categoryField);
+    setFormActionsVisibility(true);
   }
 
   if (themeKey !== "countryProfile") {
@@ -2266,7 +2326,12 @@ function buildCountryProfileList() {
     editButton.type = "button";
     editButton.className = "ghost";
     editButton.textContent = "Modifier";
-    editButton.addEventListener("click", () => populateCountryProfileForm(countryId, profile));
+    editButton.addEventListener("click", () => {
+      state.selectedEntityId = countryId;
+      showCreationPanel();
+      renderEntitySidebar();
+      populateCountryProfileForm(countryId, profile);
+    });
 
     const removeButton = document.createElement("button");
     removeButton.type = "button";
@@ -2318,6 +2383,9 @@ function selectEntity(countryId) {
   state.selectedEntityId = countryId || null;
   renderEntitySidebar();
   populateSelectedEntity();
+  if (countryId) {
+    showCreationPanel();
+  }
 }
 
 function deleteSelectedEntity() {
@@ -2375,6 +2443,8 @@ function renderEntitySidebar() {
   if (!filtered.length) {
     state.selectedEntityId = null;
     resetCountryProfileForm();
+    setCreationPanelVisibility(document.getElementById("creationPanel"), true);
+    setFormActionsVisibility(true);
     const empty = document.createElement("p");
     empty.className = "entity-list__empty";
     empty.textContent = "Aucune entité trouvée.";
@@ -2385,7 +2455,14 @@ function renderEntitySidebar() {
 
   const hasSelection = filtered.some(([countryId]) => countryId === state.selectedEntityId);
   if (!hasSelection) {
-    state.selectedEntityId = filtered[0][0];
+    state.selectedEntityId = null;
+  }
+
+  if (state.currentTheme === "countryProfile") {
+    const creationPanel = document.getElementById("creationPanel");
+    const shouldShowForm = !!state.selectedEntityId || !filtered.length;
+    setCreationPanelVisibility(creationPanel, shouldShowForm);
+    setFormActionsVisibility(shouldShowForm);
   }
 
   filtered.forEach(([countryId, profile]) => {
@@ -2437,6 +2514,7 @@ function setupEntitySidebar() {
       state.selectedEntityId = null;
       resetCountryProfileForm();
       renderEntitySidebar();
+      showCreationPanel();
       const field = document.getElementById("field-entityName");
       field?.focus();
     });
@@ -2497,6 +2575,7 @@ function buildEmbargoSummary() {
     editButton.className = "ghost";
     editButton.textContent = "Modifier";
     editButton.addEventListener("click", () => {
+      showCreationPanel();
       const select = document.getElementById("field-category");
       if (select) {
         select.value = listName;
@@ -2577,7 +2656,10 @@ function buildProspectingSummary() {
     editButton.type = "button";
     editButton.className = "ghost";
     editButton.textContent = "Modifier";
-    editButton.addEventListener("click", () => focusProspectingCountry(countryId));
+    editButton.addEventListener("click", () => {
+      showCreationPanel();
+      focusProspectingCountry(countryId);
+    });
 
     const removeButton = document.createElement("button");
     removeButton.type = "button";
@@ -2810,6 +2892,7 @@ function toggleEntityTypeFields() {
 
 function populateCountryProfileForm(countryId, profile) {
   if (!profile) return;
+  showCreationPanel();
   setFieldValue("field-entityName", profile.entityName || "");
   setFieldValue("field-entityType", profile.entityType || "subsidiary");
   toggleEntityTypeFields();
