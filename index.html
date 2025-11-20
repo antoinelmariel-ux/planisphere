@@ -46,7 +46,13 @@
         <p class="eyebrow">Configuration</p>
         <h3>Back-office</h3>
       </div>
-      <button class="ghost" id="closeBackOffice">Fermer</button>
+      <div class="back-office__header-actions">
+        <button type="button" class="ghost icon-button" id="saveConfiguration" aria-label="Sauvegarder la configuration">
+          <span aria-hidden="true">💾</span>
+          <span>Sauvegarder</span>
+        </button>
+        <button class="ghost" id="closeBackOffice">Fermer</button>
+      </div>
     </div>
     <div class="back-office__nav" role="tablist" aria-label="Navigation du back-office">
       <button class="tab is-active" id="tab-entities" data-theme="countryProfile" role="tab" aria-selected="true" aria-controls="panel-config">
@@ -73,14 +79,10 @@
       <section id="panel-config" class="back-office__panel is-active" role="tabpanel" aria-labelledby="tab-entities">
           <div class="config-detail">
             <select id="themeSelect" class="visually-hidden" aria-hidden="true" tabindex="-1"></select>
-
-            <div class="action-toolbar" role="status" aria-live="polite">
-              <div class="action-toolbar__group">
+            <div class="back-office__utilities" role="status" aria-live="polite">
+              <span id="unsavedIndicator" class="unsaved-indicator">Modifications non enregistrées</span>
+              <div class="utility-actions">
                 <button type="button" id="resetData" class="ghost">Réinitialiser les données par défaut</button>
-                <button type="button" id="exportData" class="ghost">Exporter les données</button>
-              </div>
-              <div class="action-toolbar__group">
-                <span id="unsavedIndicator" class="unsaved-indicator">Modifications non enregistrées</span>
                 <button type="button" id="deleteEntity" class="ghost danger">Supprimer l'entité</button>
               </div>
             </div>
@@ -141,7 +143,7 @@
   </aside>
 
   <footer class="footer">
-    <p>Planisphère compliance – version <strong id="versionLabel">0.14.0</strong></p>
+    <p>Planisphère compliance – version <strong id="versionLabel">0.15.0</strong></p>
   </footer>
 
   <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
