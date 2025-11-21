@@ -741,6 +741,92 @@ textarea {
   opacity: 1;
 }
 
+.theme-manager {
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+  padding: 14px;
+  background: #fff;
+  box-shadow: var(--shadow);
+  margin-bottom: 12px;
+  display: grid;
+  gap: 12px;
+}
+
+.theme-manager__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.theme-manager__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.theme-manager__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.theme-chip {
+  border: 1px solid var(--stroke);
+  border-radius: 999px;
+  padding: 8px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #f8fafc;
+  color: var(--text);
+}
+
+.theme-chip.is-active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(47, 128, 237, 0.25);
+}
+
+.theme-chip__type {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  background: #fff;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--stroke);
+}
+
+.theme-chip__actions {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.theme-chip button {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.theme-chip button:hover {
+  color: var(--accent);
+}
+
+.theme-manager__selector {
+  display: grid;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.theme-manager__selector select {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--stroke);
+  background: #fff;
+}
+
 .back-office__utilities {
   display: flex;
   justify-content: space-between;
@@ -837,7 +923,7 @@ textarea {
 
 .legend-row {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr auto auto;
   gap: 8px;
   align-items: center;
 }

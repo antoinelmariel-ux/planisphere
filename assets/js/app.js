@@ -1,4 +1,4 @@
-const APP_VERSION = "0.16.0";
+const APP_VERSION = "0.17.0";
 const WORLD_SVG_PATH = "assets/world.svg";
 const CORRUPTION_INDEX_PATH = "assets/ICP2024.json";
 
@@ -501,6 +501,8 @@ const DEFAULT_THEMES = {
   }
 };
 
+const DEFAULT_THEME_KEYS = new Set(Object.keys(DEFAULT_THEMES));
+
 const initialThemes = loadThemes();
 const initialThemeKey = Object.keys(initialThemes)[0] || null;
 
@@ -524,6 +526,17 @@ const state = {
 
 let toastTimeout;
 let activeModalContent = null;
+
+function restoreModalSubmit() {
+  const submitButton = document.getElementById("modalSubmit");
+  if (!submitButton) return;
+  const clone = submitButton.cloneNode(true);
+  const defaultLabel = submitButton.dataset.defaultLabel || submitButton.textContent || "Valider";
+  clone.textContent = defaultLabel;
+  clone.type = "submit";
+  clone.dataset.defaultLabel = defaultLabel;
+  submitButton.replaceWith(clone);
+}
 
 function updateModalBodyState() {
   const hasOpenModal = document.querySelector(".modal.is-open");
@@ -554,6 +567,30 @@ const CATALOG_CONFIG = {
     }
   }
 };
+
+function slugifyLabel(label) {
+  return label
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/-{2,}/g, "-");
+}
+
+function generateThemeKey(label) {
+  const base = slugifyLabel(label) || "thematique";
+  let candidate = base;
+  let index = 2;
+  while (state.themes[candidate]) {
+    candidate = `${base}-${index}`;
+    index += 1;
+  }
+  return candidate;
+}
+
+function isCustomTheme(themeKey) {
+  return !DEFAULT_THEME_KEYS.has(themeKey);
+}
 
 function showToast(message, type = "success") {
   const toast = document.getElementById("toast");
@@ -1015,6 +1052,7 @@ function selectTheme(key) {
   document.querySelectorAll(".theme-menu button").forEach((btn) =>
     btn.classList.toggle("is-active", btn.id === `btn-${key}`)
   );
+  renderThemeChips();
   const themeSelect = document.getElementById("themeSelect");
   if (themeSelect) {
     themeSelect.value = key;
@@ -1298,6 +1336,15 @@ function buildTooltipContent(id, theme) {
     const preview = `<h4>${country.name}</h4><p>Zone : <strong>${value}</strong></p>`;
     return { preview, full: preview, title: country.name, hasOverflow: false };
   }
+  if (theme.mode === "tooltip") {
+    const payload = typeof value === "string" ? { description: value } : value;
+    const title = payload.title || country.name;
+    const description = payload.description || payload.text || payload.content || "Informations disponibles";
+    const preview = `<h4>${title}</h4><p>${description}</p>`;
+    const hasOverflow = description.length > 140;
+    const full = hasOverflow ? preview : preview;
+    return { preview, full, title, hasOverflow };
+  }
   if (theme.mode === "category") {
     const preview = `<h4>${country.name}</h4><p>Liste : <strong>${value}</strong></p>`;
     return { preview, full: preview, title: country.name, hasOverflow: false };
@@ -1387,30 +1434,15 @@ function buildBackOffice() {
   const themeSelect = document.getElementById("themeSelect");
   if (!themeSelect) return;
   themeSelect.removeEventListener("change", handleThemeSelectChange);
-  themeSelect.innerHTML = "";
-  const hasThemes = Object.keys(state.themes).length > 0;
-  if (!hasThemes) {
-    const option = document.createElement("option");
-    option.value = "";
-    option.textContent = "Aucune thématique disponible";
-    themeSelect.appendChild(option);
-    themeSelect.disabled = true;
-    renderDynamicFields();
-    return;
-  }
-
-  themeSelect.disabled = false;
-  Object.entries(state.themes).forEach(([key, theme]) => {
-    const option = document.createElement("option");
-    option.value = key;
-    option.textContent = theme.label;
-    themeSelect.appendChild(option);
-  });
-
-  state.currentTheme = state.currentTheme ?? Object.keys(state.themes)[0];
-  themeSelect.value = state.currentTheme;
+  populateThemeSelect();
+  renderThemeChips();
   renderDynamicFields();
   setupThemeSelectListener();
+
+  const createThemeButton = document.getElementById("createTheme");
+  if (createThemeButton) {
+    createThemeButton.onclick = openThemeCreationModal;
+  }
 }
 
 function createCatalogRow(label, catalogKey) {
@@ -1776,6 +1808,7 @@ function closeModal() {
   modal.classList.remove("is-open");
   modal.setAttribute("aria-hidden", "true");
   updateModalBodyState();
+  restoreModalSubmit();
   if (activeModalContent) {
     activeModalContent.classList.remove("is-visible");
   }
@@ -1798,6 +1831,20 @@ function openModal(content, title = "Configuration") {
   modal.classList.add("is-open");
   modal.setAttribute("aria-hidden", "false");
   updateModalBodyState();
+}
+
+function bindModalSubmit(label, handler) {
+  const submitButton = document.getElementById("modalSubmit");
+  if (!submitButton) return;
+  submitButton.dataset.defaultLabel = submitButton.dataset.defaultLabel || submitButton.textContent;
+  const clone = submitButton.cloneNode(true);
+  clone.textContent = label || submitButton.textContent;
+  clone.type = "button";
+  clone.addEventListener("click", (event) => {
+    event.preventDefault();
+    handler?.();
+  });
+  submitButton.replaceWith(clone);
 }
 
 function attachCreationPanel(panel, title) {
@@ -1896,6 +1943,248 @@ function buildCreationButton(label, onClick) {
 
   container.appendChild(button);
   return container;
+}
+
+function removeTheme(themeKey) {
+  if (!isCustomTheme(themeKey)) {
+    alert("Les thématiques par défaut ne peuvent pas être supprimées.");
+    return;
+  }
+  if (!confirm("Supprimer cette thématique et ses données ?")) return;
+  const nextThemes = { ...state.themes };
+  delete nextThemes[themeKey];
+  state.themes = nextThemes;
+  persistThemes();
+  const nextKey = Object.keys(state.themes)[0] || null;
+  selectTheme(nextKey);
+  buildMenu();
+  buildBackOffice();
+  showToast("Thématique supprimée", "success");
+}
+
+function renderThemeChips() {
+  const container = document.getElementById("themeChips");
+  if (!container) return;
+  container.innerHTML = "";
+
+  const entries = Object.entries(state.themes);
+  if (!entries.length) {
+    const helper = document.createElement("p");
+    helper.className = "helper";
+    helper.textContent = "Aucune thématique pour le moment. Créez-en une pour commencer.";
+    container.appendChild(helper);
+    return;
+  }
+
+  entries.forEach(([key, theme]) => {
+    const chip = document.createElement("div");
+    chip.className = "theme-chip";
+    if (state.currentTheme === key) {
+      chip.classList.add("is-active");
+    }
+
+    const labelButton = document.createElement("button");
+    labelButton.type = "button";
+    labelButton.textContent = theme.label;
+    labelButton.title = "Afficher cette thématique";
+    labelButton.addEventListener("click", () => selectTheme(key));
+
+    const typeBadge = document.createElement("span");
+    typeBadge.className = "theme-chip__type";
+    const typeLabel =
+      theme.mode === "category"
+        ? "Zones"
+        : theme.mode === "numeric"
+          ? "Indice"
+          : "Infobulle";
+    typeBadge.textContent = typeLabel;
+
+    chip.appendChild(labelButton);
+    chip.appendChild(typeBadge);
+
+    if (isCustomTheme(key)) {
+      const actions = document.createElement("div");
+      actions.className = "theme-chip__actions";
+      const deleteButton = document.createElement("button");
+      deleteButton.type = "button";
+      deleteButton.title = "Supprimer la thématique";
+      deleteButton.textContent = "✕";
+      deleteButton.addEventListener("click", () => removeTheme(key));
+      actions.appendChild(deleteButton);
+      chip.appendChild(actions);
+    }
+
+    container.appendChild(chip);
+  });
+}
+
+function populateThemeSelect() {
+  const themeSelect = document.getElementById("themeSelect");
+  if (!themeSelect) return;
+  themeSelect.innerHTML = "";
+
+  const hasThemes = Object.keys(state.themes).length > 0;
+  if (!hasThemes) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "Aucune thématique disponible";
+    themeSelect.appendChild(option);
+    themeSelect.disabled = true;
+    return;
+  }
+
+  themeSelect.disabled = false;
+  Object.entries(state.themes).forEach(([key, theme]) => {
+    const option = document.createElement("option");
+    option.value = key;
+    option.textContent = theme.label;
+    themeSelect.appendChild(option);
+  });
+
+  state.currentTheme = state.currentTheme ?? Object.keys(state.themes)[0];
+  themeSelect.value = state.currentTheme;
+}
+
+function buildLegendRows(container, onChange) {
+  const row = document.createElement("div");
+  row.className = "legend-row";
+
+  const nameInput = document.createElement("input");
+  nameInput.type = "text";
+  nameInput.placeholder = "Nom de la zone";
+
+  const colorInput = document.createElement("input");
+  colorInput.type = "color";
+  colorInput.value = getNextLegendColor({ legend: collectLegendValues(container) });
+
+  const removeButton = document.createElement("button");
+  removeButton.type = "button";
+  removeButton.textContent = "Supprimer";
+  removeButton.className = "ghost";
+  removeButton.addEventListener("click", () => {
+    row.remove();
+    onChange?.();
+  });
+
+  [nameInput, colorInput].forEach((input) => input.addEventListener("input", () => onChange?.()));
+
+  row.appendChild(nameInput);
+  row.appendChild(colorInput);
+  row.appendChild(removeButton);
+  container.appendChild(row);
+}
+
+function collectLegendValues(container) {
+  const legend = {};
+  container
+    .querySelectorAll(".legend-row")
+    .forEach((row) => {
+      const name = row.querySelector("input[type='text']")?.value.trim();
+      const color = row.querySelector("input[type='color']")?.value;
+      if (name && color) {
+        legend[name] = color;
+      }
+    });
+  return legend;
+}
+
+function openThemeCreationModal() {
+  const wrapper = document.createElement("div");
+  wrapper.className = "stack";
+  const labelField = document.createElement("label");
+  labelField.innerHTML = "Nom de la thématique<input id=\"themeName\" type=\"text\" placeholder=\"Ex. Couverture produits\" />";
+
+  const typeField = document.createElement("div");
+  typeField.className = "stack";
+  typeField.innerHTML = `
+    <p class="eyebrow">Type</p>
+    <label class="pill-toggle"><input type="radio" name="themeMode" value="tooltip" checked />Infobulle (texte)</label>
+    <label class="pill-toggle"><input type="radio" name="themeMode" value="category" />Zones de couleur</label>
+  `;
+
+  const tooltipConfig = document.createElement("div");
+  tooltipConfig.className = "inline-fields";
+  tooltipConfig.innerHTML = `
+    <label>Couleur d'accent
+      <input id="themeColor" type="color" value="#0ea5e9" />
+    </label>
+  `;
+
+  const legendConfig = document.createElement("div");
+  legendConfig.className = "stack";
+  legendConfig.innerHTML = `<p class="helper">Ajoutez les zones de couleur proposées aux utilisateurs.</p>`;
+  const legendRows = document.createElement("div");
+  legendRows.className = "legend-editor__list";
+  legendConfig.appendChild(legendRows);
+
+  const addLegendButton = document.createElement("button");
+  addLegendButton.type = "button";
+  addLegendButton.className = "ghost";
+  addLegendButton.textContent = "Ajouter une zone";
+  addLegendButton.addEventListener("click", () => buildLegendRows(legendRows));
+  legendConfig.appendChild(addLegendButton);
+
+  buildLegendRows(legendRows);
+
+  const toggleConfigVisibility = () => {
+    const selectedMode =
+      document.querySelector('input[name="themeMode"]:checked')?.value || "tooltip";
+    tooltipConfig.style.display = selectedMode === "tooltip" ? "grid" : "none";
+    legendConfig.style.display = selectedMode === "category" ? "block" : "none";
+  };
+
+  typeField.querySelectorAll("input[name='themeMode']").forEach((input) => {
+    input.addEventListener("change", toggleConfigVisibility);
+  });
+  toggleConfigVisibility();
+
+  wrapper.appendChild(labelField);
+  wrapper.appendChild(typeField);
+  wrapper.appendChild(tooltipConfig);
+  wrapper.appendChild(legendConfig);
+
+  bindModalSubmit("Valider la création", () => {
+    const nameInput = document.getElementById("themeName");
+    const themeLabel = nameInput?.value.trim();
+    if (!themeLabel) {
+      alert("Merci d'indiquer un nom de thématique");
+      return;
+    }
+    const mode =
+      document.querySelector('input[name="themeMode"]:checked')?.value || "tooltip";
+    const themeKey = generateThemeKey(themeLabel);
+    if (state.themes[themeKey]) {
+      alert("Une thématique porte déjà ce nom. Merci d'en choisir un autre.");
+      return;
+    }
+
+    const theme = { label: themeLabel, mode, data: {} };
+
+    if (mode === "tooltip") {
+      const colorInput = document.getElementById("themeColor");
+      theme.color = colorInput?.value || "#0ea5e9";
+    }
+
+    if (mode === "category") {
+      const legend = collectLegendValues(legendRows);
+      if (!Object.keys(legend).length) {
+        alert("Ajoutez au moins une zone colorée");
+        return;
+      }
+      theme.legend = legend;
+      theme.allowCustomLegend = true;
+    }
+
+    state.themes = { ...state.themes, [themeKey]: theme };
+    persistThemes();
+    buildMenu();
+    buildBackOffice();
+    selectTheme(themeKey);
+    closeModal();
+    showToast("Thématique créée", "success");
+  });
+
+  openModal(wrapper, "Nouvelle thématique");
 }
 
 function buildCategoryField(themeKey, theme) {
@@ -2445,6 +2734,37 @@ function renderDynamicFields() {
     dynamic.appendChild(wrapper);
     buildProspectingMatrix();
     dynamic.appendChild(createSaveActions());
+  } else if (theme.mode === "tooltip") {
+    const creationPanel = document.createElement("div");
+    creationPanel.id = "creationPanel";
+    creationPanel.className = "creation-panel";
+    creationPanel.innerHTML = `
+      <p class="helper">Sélectionnez un ou plusieurs pays puis définissez le contenu de l'infobulle.</p>
+      <label>Titre de l'infobulle<input id="field-tooltipTitle" type="text" placeholder="Titre affiché" /></label>
+      <label>Description détaillée<textarea id="field-tooltipDescription" placeholder="Texte présenté dans l'infobulle"></textarea></label>
+      <div class="country-chip-selector">
+        <label for="countrySearch">Pays concernés</label>
+        <input id="countrySearch" type="search" list="countryOptions" placeholder="Rechercher un pays" />
+        <datalist id="countryOptions"></datalist>
+        <div id="countryTags" class="tag-container" aria-live="polite"></div>
+      </div>
+    `;
+
+    dynamic.appendChild(
+      buildCreationButton("Créer une infobulle", () => {
+        const titleField = document.getElementById("field-tooltipTitle");
+        const descriptionField = document.getElementById("field-tooltipDescription");
+        if (titleField) titleField.value = "";
+        if (descriptionField) descriptionField.value = "";
+        setCountrySelection([]);
+        document.getElementById("field-tooltipTitle")?.focus();
+      })
+    );
+    dynamic.appendChild(buildTooltipThemeSummary(themeKey));
+    attachCreationPanel(creationPanel, "Créer une infobulle");
+    setupCountrySearch();
+    const shouldShowForm = !Object.keys(theme.data || {}).length;
+    setCreationPanelVisibility(creationPanel, shouldShowForm);
   } else if (theme.mode === "numeric") {
     dynamic.innerHTML = `<label>Valeur numérique<input id="field-numeric" type="number" step="0.1" /></label>`;
     dynamic.appendChild(createSaveActions());
@@ -2739,6 +3059,88 @@ function buildProspectingSummary() {
       delete state.themes.prospecting.data[countryId];
       persistThemes();
       selectTheme("prospecting");
+    });
+
+    actions.appendChild(editButton);
+    actions.appendChild(removeButton);
+    row.appendChild(info);
+    row.appendChild(actions);
+    list.appendChild(row);
+  });
+
+  container.appendChild(list);
+  return container;
+}
+
+function buildTooltipThemeSummary(themeKey) {
+  const container = document.createElement("div");
+  container.className = "back-office__section";
+  const header = document.createElement("header");
+  header.className = "back-office__section-header";
+  const heading = document.createElement("div");
+  heading.innerHTML = `<p class="eyebrow">Infobulles</p><h4>Pays configurés</h4>`;
+  header.appendChild(heading);
+  container.appendChild(header);
+
+  const list = document.createElement("div");
+  list.className = "summary-list";
+
+  const data = state.themes?.[themeKey]?.data || {};
+  const entries = Object.entries(data).sort((a, b) => a[0].localeCompare(b[0]));
+
+  if (!entries.length) {
+    const empty = document.createElement("p");
+    empty.className = "helper";
+    empty.textContent = "Aucune infobulle enregistrée pour le moment.";
+    container.appendChild(empty);
+    return container;
+  }
+
+  entries.forEach(([countryId, value]) => {
+    const row = document.createElement("div");
+    row.className = "summary-row";
+    const country = COUNTRIES.find((c) => c.id === countryId);
+    const title = value.title || country?.name || countryId;
+    const description = value.description || value.text || value.content || "(Sans description)";
+
+    const info = document.createElement("div");
+    info.innerHTML = `<strong>${title}</strong><p class="helper">${country?.name || countryId}</p><p class="helper">${description.slice(0, 120)}${description.length > 120 ? "…" : ""}</p>`;
+
+    const actions = document.createElement("div");
+    actions.className = "summary-row__actions";
+
+    const editButton = document.createElement("button");
+    editButton.type = "button";
+    editButton.className = "ghost";
+    editButton.textContent = "Modifier";
+    editButton.addEventListener("click", () => {
+      showCreationPanel();
+      const creationPanel = document.getElementById("creationPanel");
+      if (creationPanel) {
+        creationPanel.dataset.countryId = countryId;
+      }
+      setCountrySelection([countryId]);
+      const titleField = document.getElementById("field-tooltipTitle");
+      const descriptionField = document.getElementById("field-tooltipDescription");
+      if (titleField) {
+        titleField.value = title;
+      }
+      if (descriptionField) {
+        descriptionField.value = description;
+      }
+      const backOffice = document.getElementById("backOffice");
+      backOffice?.scrollTo({ top: 0, behavior: "smooth" });
+    });
+
+    const removeButton = document.createElement("button");
+    removeButton.type = "button";
+    removeButton.className = "ghost danger";
+    removeButton.textContent = "Supprimer";
+    removeButton.addEventListener("click", () => {
+      if (!confirm(`Supprimer l'infobulle pour ${country?.name || countryId} ?`)) return;
+      delete state.themes?.[themeKey]?.data?.[countryId];
+      persistThemes();
+      selectTheme(themeKey);
     });
 
     actions.appendChild(editButton);
@@ -3267,6 +3669,22 @@ function handleBackOfficeSubmit(e) {
       }
     });
     theme.data = prospecting;
+  } else if (theme.mode === "tooltip") {
+    const selectedCountries = getSelectedCountries();
+    if (!selectedCountries.length) {
+      return handleSaveError("Merci de sélectionner au moins un pays");
+    }
+    const title = document.getElementById("field-tooltipTitle")?.value.trim();
+    const description = document.getElementById("field-tooltipDescription")?.value.trim();
+    if (!title && !description) {
+      return handleSaveError("Merci de saisir un titre ou une description");
+    }
+    selectedCountries.forEach((countryId) => {
+      theme.data[countryId] = {
+        title: title || COUNTRIES.find((c) => c.id === countryId)?.name || countryId,
+        description: description || ""
+      };
+    });
   } else if (theme.mode === "numeric") {
     const selectedCountries = getSelectedCountries();
     if (!selectedCountries.length) {
