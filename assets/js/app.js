@@ -1,4 +1,4 @@
-const APP_VERSION = "0.20.0";
+const APP_VERSION = "0.21.0";
 const WORLD_SVG_PATH = "assets/world.svg";
 const CORRUPTION_INDEX_PATH = "assets/ICP2024.json";
 
@@ -524,7 +524,7 @@ const initialThemes = loadThemes();
 const initialThemeKey = Object.keys(initialThemes)[0] || null;
 
 const VIEWBOX_FALLBACK = "0 0 2000 857";
-const EUROPE_VIEWBOX = "820 20 423 490";
+const EUROPE_VIEWBOX = "910.643 125 241.714 280";
 
 const state = {
   currentTheme: initialThemeKey,
