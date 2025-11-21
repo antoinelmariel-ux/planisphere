@@ -507,7 +507,7 @@ const initialThemes = loadThemes();
 const initialThemeKey = Object.keys(initialThemes)[0] || null;
 
 const VIEWBOX_FALLBACK = "0 0 2000 857";
-const EUROPE_VIEWBOX = "780 20 300 340";
+const EUROPE_VIEWBOX = "820 20 360 308";
 
 const state = {
   currentTheme: initialThemeKey,
