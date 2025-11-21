@@ -1,4 +1,4 @@
-const APP_VERSION = "0.22.0";
+const APP_VERSION = "0.23.0";
 const WORLD_SVG_PATH = "assets/world.svg";
 const CORRUPTION_INDEX_PATH = "assets/ICP2024.json";
 
