@@ -717,30 +717,6 @@ textarea {
   margin-bottom: 12px;
 }
 
-.unsaved-indicator {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--accent);
-  font-weight: 700;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-  white-space: nowrap;
-}
-
-.unsaved-indicator::before {
-  content: "";
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--accent-2);
-  box-shadow: 0 0 0 6px rgba(249, 115, 22, 0.18);
-}
-
-.unsaved-indicator.is-visible {
-  opacity: 1;
-}
-
 .theme-manager {
   border: 1px solid var(--stroke);
   border-radius: 12px;

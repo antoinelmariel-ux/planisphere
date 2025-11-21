@@ -79,23 +79,21 @@
       </section>
 
       <section id="panel-config" class="back-office__panel is-active" role="tabpanel" aria-labelledby="tab-entities">
-          <div class="config-detail">
-            <header class="back-office__section-header">
-              <div>
-                <p class="eyebrow">Configuration</p>
-                <h4>Paramétrage des entités</h4>
+            <div class="config-detail">
+              <header class="back-office__section-header">
+                <div>
+                  <p class="eyebrow">Configuration</p>
+                  <h4>Paramétrage des entités</h4>
+                </div>
+                <p class="helper">Choisissez la thématique dans l'onglet Thématiques puis complétez ses informations ici.</p>
+              </header>
+              <div class="back-office__utilities" role="status" aria-live="polite">
+                <div class="utility-actions">
+                  <button type="button" id="deleteEntity" class="ghost danger">Supprimer l'entité</button>
+                </div>
               </div>
-              <p class="helper">Choisissez la thématique dans l'onglet Thématiques puis complétez ses informations ici.</p>
-            </header>
-            <div class="back-office__utilities" role="status" aria-live="polite">
-              <span id="unsavedIndicator" class="unsaved-indicator">Modifications non enregistrées</span>
-              <div class="utility-actions">
-                <button type="button" id="resetData" class="ghost">Réinitialiser les données par défaut</button>
-                <button type="button" id="deleteEntity" class="ghost danger">Supprimer l'entité</button>
-              </div>
-            </div>
 
-            <div id="dynamicFields" class="dynamic-fields"></div>
+              <div id="dynamicFields" class="dynamic-fields"></div>
           </div>
       </section>
       <div id="modalOverlay" class="modal" aria-hidden="true">
@@ -151,7 +149,7 @@
   </aside>
 
   <footer class="footer">
-    <p>Planisphère compliance – version <strong id="versionLabel">0.19.0</strong></p>
+    <p>Planisphère compliance – version <strong id="versionLabel">0.20.0</strong></p>
   </footer>
 
   <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
