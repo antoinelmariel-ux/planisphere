@@ -1,4 +1,4 @@
-const APP_VERSION = "0.21.0";
+const APP_VERSION = "0.22.0";
 const WORLD_SVG_PATH = "assets/world.svg";
 const CORRUPTION_INDEX_PATH = "assets/ICP2024.json";
 
@@ -1785,6 +1785,31 @@ function addLegendEntry(themeKey, label, color) {
   renderDynamicFields();
 }
 
+function removeLegendEntry(themeKey, label) {
+  const theme = state.themes[themeKey];
+  if (!theme || !label) return;
+  const legend = { ...(theme.legend || {}) };
+  const data = { ...(theme.data || {}) };
+
+  if (!legend[label]) return;
+
+  delete legend[label];
+  Object.entries(data).forEach(([countryId, value]) => {
+    if (value === label) {
+      delete data[countryId];
+    }
+  });
+
+  const updatedTheme = { ...theme, legend, data };
+  state.themes = { ...state.themes, [themeKey]: updatedTheme };
+  persistThemes();
+  if (state.currentTheme === themeKey) {
+    refreshColors();
+    buildLegend();
+  }
+  renderDynamicFields();
+}
+
 function buildLegendEditor(themeKey, theme) {
   const container = document.createElement("div");
   container.className = "legend-editor";
@@ -1794,53 +1819,115 @@ function buildLegendEditor(themeKey, theme) {
   const helperText =
     themeKey === "embargo"
       ? "Ajoutez des listes d'embargo et ajustez leur couleur."
-      : "Renommez ou ajoutez des zones pour organiser vos pays.";
-  header.innerHTML =
-    `<div><div class="eyebrow">Listes</div><strong>Gérer les légendes</strong></div><p class="helper">${helperText}</p>`;
+      : "Renommez, réorganisez et supprimez facilement les zones colorées.";
+  header.innerHTML = `
+    <div>
+      <div class="eyebrow">Légende de la carte</div>
+      <strong>Organisation des catégories</strong>
+      <p class="helper">${helperText}</p>
+    </div>
+    <div class="legend-editor__badge">${Object.keys(theme.legend || {}).length} catégorie(s)</div>
+  `;
   container.appendChild(header);
+
+  const guidance = document.createElement("ul");
+  guidance.className = "legend-editor__hints";
+  guidance.innerHTML = `
+    <li>Nom et couleur doivent rester uniques pour garder la carte lisible.</li>
+    <li>Supprimer une catégorie efface aussi son attribution sur les pays.</li>
+    <li>Les modifications sont appliquées immédiatement et visibles sur la carte.</li>
+  `;
+  container.appendChild(guidance);
 
   const listContainer = document.createElement("div");
   listContainer.className = "legend-editor__list";
 
-  Object.entries(theme.legend || {}).forEach(([label, color]) => {
-    const row = document.createElement("div");
-    row.className = "legend-row";
+  const renderRows = () => {
+    listContainer.innerHTML = "";
+    const currentTheme = state.themes[themeKey] || theme;
+    const entries = Object.entries(currentTheme.legend || {});
 
-    const nameInput = document.createElement("input");
-    nameInput.type = "text";
-    nameInput.value = label;
-    nameInput.placeholder = "Nom de la liste";
+    if (!entries.length) {
+      const empty = document.createElement("p");
+      empty.className = "legend-editor__empty";
+      empty.textContent = "Aucune catégorie définie pour le moment.";
+      listContainer.appendChild(empty);
+      return;
+    }
 
-    const colorInput = document.createElement("input");
-    colorInput.type = "color";
-    colorInput.value = color;
+    entries.forEach(([label, color]) => {
+      const row = document.createElement("div");
+      row.className = "legend-row legend-row--editable";
+      row.dataset.initialLabel = label;
 
-    nameInput.addEventListener("blur", () => {
-      const nextLabel = nameInput.value.trim();
-      if (!nextLabel) {
-        nameInput.value = label;
-        return;
-      }
-      updateLegendEntry(themeKey, label, nextLabel, colorInput.value);
+      const nameField = document.createElement("label");
+      nameField.className = "legend-row__field";
+      nameField.textContent = "Nom";
+      const nameInput = document.createElement("input");
+      nameInput.type = "text";
+      nameInput.value = label;
+      nameInput.placeholder = "Ex. Zone prioritaire";
+      nameField.appendChild(nameInput);
+
+      const colorField = document.createElement("label");
+      colorField.className = "legend-row__field";
+      colorField.textContent = "Couleur";
+      const colorInput = document.createElement("input");
+      colorInput.type = "color";
+      colorInput.value = color;
+      colorField.appendChild(colorInput);
+
+      const actions = document.createElement("div");
+      actions.className = "legend-row__actions";
+
+      const saveButton = document.createElement("button");
+      saveButton.type = "button";
+      saveButton.className = "primary";
+      saveButton.textContent = "Mettre à jour";
+      saveButton.addEventListener("click", () => {
+        const previousLabel = row.dataset.initialLabel;
+        const nextLabel = nameInput.value.trim();
+        if (!nextLabel) {
+          alert("Merci d'indiquer un nom de catégorie");
+          nameInput.focus();
+          return;
+        }
+        updateLegendEntry(themeKey, previousLabel, nextLabel, colorInput.value);
+        row.dataset.initialLabel = nextLabel;
+        renderRows();
+      });
+
+      const deleteButton = document.createElement("button");
+      deleteButton.type = "button";
+      deleteButton.className = "ghost danger";
+      deleteButton.textContent = "Supprimer";
+      deleteButton.addEventListener("click", () => {
+        const confirmed = confirm(
+          `Supprimer "${row.dataset.initialLabel}" et retirer son attribution sur les pays ?`
+        );
+        if (!confirmed) return;
+        removeLegendEntry(themeKey, row.dataset.initialLabel);
+        renderRows();
+      });
+
+      actions.appendChild(saveButton);
+      actions.appendChild(deleteButton);
+
+      row.appendChild(nameField);
+      row.appendChild(colorField);
+      row.appendChild(actions);
+      listContainer.appendChild(row);
     });
+  };
 
-    colorInput.addEventListener("input", () => {
-      const nextLabel = nameInput.value.trim() || label;
-      updateLegendEntry(themeKey, label, nextLabel, colorInput.value);
-    });
-
-    row.appendChild(nameInput);
-    row.appendChild(colorInput);
-    listContainer.appendChild(row);
-  });
-
+  renderRows();
   container.appendChild(listContainer);
 
   const form = document.createElement("div");
   form.className = "legend-editor__form";
   const nameInput = document.createElement("input");
   nameInput.type = "text";
-  nameInput.placeholder = "Nom de la nouvelle liste";
+  nameInput.placeholder = "Nom de la nouvelle catégorie";
 
   const colorInput = document.createElement("input");
   colorInput.type = "color";
@@ -1848,14 +1935,20 @@ function buildLegendEditor(themeKey, theme) {
 
   const addButton = document.createElement("button");
   addButton.type = "button";
+  addButton.className = "ghost";
   addButton.textContent =
-    themeKey === "embargo" ? "Créer une liste d'embargo" : "Ajouter une liste";
+    themeKey === "embargo" ? "Créer une liste d'embargo" : "Ajouter à la légende";
   addButton.addEventListener("click", () => {
     const label = nameInput.value.trim();
-    if (!label) return alert("Merci d'indiquer un nom de liste");
+    if (!label) {
+      alert("Merci d'indiquer un nom de catégorie");
+      nameInput.focus();
+      return;
+    }
     addLegendEntry(themeKey, label, colorInput.value);
     nameInput.value = "";
     colorInput.value = getNextLegendColor(state.themes[themeKey]);
+    renderRows();
   });
 
   form.appendChild(nameInput);
@@ -2399,7 +2492,7 @@ function openThemeCreationModal() {
 
   const legendConfig = document.createElement("div");
   legendConfig.className = "stack";
-  legendConfig.innerHTML = `<p class="helper">Ajoutez les zones de couleur proposées aux utilisateurs.</p>`;
+  legendConfig.innerHTML = `<p class="helper">Préparez les catégories visibles dans la légende : un nom clair et une couleur unique par zone.</p>`;
   const legendRows = document.createElement("div");
   legendRows.className = "legend-editor__list";
   legendConfig.appendChild(legendRows);
@@ -2514,7 +2607,7 @@ function openThemeEditModal(themeKey) {
 
   const legendConfig = document.createElement("div");
   legendConfig.className = "stack";
-  legendConfig.innerHTML = `<p class="helper">Définissez les catégories proposées.</p>`;
+  legendConfig.innerHTML = `<p class="helper">Définissez les catégories disponibles dans la légende et harmonisez leurs couleurs.</p>`;
   const legendRows = document.createElement("div");
   legendRows.className = "legend-editor__list";
   legendConfig.appendChild(legendRows);
