@@ -885,6 +885,17 @@ textarea {
   gap: 10px;
 }
 
+.legend-editor__summary {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--stroke);
+  background: #f8fafc;
+}
+
 .legend-editor__header {
   display: flex;
   align-items: center;
@@ -892,9 +903,27 @@ textarea {
   gap: 10px;
 }
 
+.legend-editor__columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 140px 170px;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  padding: 0 6px;
+}
+
 .legend-editor__list {
   display: grid;
   gap: 8px;
+}
+
+.legend-editor__empty {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px dashed var(--stroke);
+  background: #f8fafc;
 }
 
 .legend-row {
@@ -902,6 +931,39 @@ textarea {
   grid-template-columns: 1fr auto auto;
   gap: 8px;
   align-items: center;
+}
+
+.legend-row--card {
+  grid-template-columns: minmax(0, 1fr) 160px auto;
+  border-radius: 12px;
+  border: 1px solid var(--stroke);
+  padding: 10px 12px;
+  background: #ffffff;
+  box-shadow: var(--shadow);
+}
+
+.legend-row__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.legend-row__label {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.legend-row__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.legend-row__hint {
+  color: var(--muted);
+  font-size: 12px;
+  word-break: break-all;
 }
 
 .legend-row input[type="color"],
@@ -913,9 +975,17 @@ textarea {
 
 .legend-editor__form {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: minmax(0, 1fr) 140px auto;
   gap: 8px;
   align-items: center;
+}
+
+.legend-row--card input[type="color"] {
+  width: 56px;
+}
+
+.legend-editor__creation {
+  margin-top: 8px;
 }
 
 .category-field {
