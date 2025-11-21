@@ -1,4 +1,4 @@
-const APP_VERSION = "0.18.0";
+const APP_VERSION = "0.19.0";
 const WORLD_SVG_PATH = "assets/world.svg";
 const CORRUPTION_INDEX_PATH = "assets/ICP2024.json";
 
@@ -503,6 +503,23 @@ const DEFAULT_THEMES = {
 
 const DEFAULT_THEME_KEYS = new Set(Object.keys(DEFAULT_THEMES));
 
+const DEFAULT_TOOLTIP_FIELDS = [
+  {
+    id: "title",
+    label: "Titre",
+    type: "text",
+    placeholder: "Titre affiché",
+    defaultValue: ""
+  },
+  {
+    id: "description",
+    label: "Description",
+    type: "textarea",
+    placeholder: "Texte présenté dans l'infobulle",
+    defaultValue: ""
+  }
+];
+
 const initialThemes = loadThemes();
 const initialThemeKey = Object.keys(initialThemes)[0] || null;
 
@@ -575,6 +592,41 @@ function slugifyLabel(label) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .replace(/-{2,}/g, "-");
+}
+
+function ensureFieldId(label, fallback, existing = []) {
+  const base = slugifyLabel(label) || fallback;
+  let candidate = base;
+  let counter = 1;
+  while (existing.includes(candidate)) {
+    counter += 1;
+    candidate = `${base}-${counter}`;
+  }
+  return candidate;
+}
+
+function normalizeTooltipFields(theme) {
+  const fields = Array.isArray(theme?.fields) ? theme.fields : [];
+  if (!fields.length) return [...DEFAULT_TOOLTIP_FIELDS];
+  const sanitized = [];
+  fields.forEach((field, index) => {
+    if (!field) return;
+    const existingIds = sanitized.map((item) => item.id).filter(Boolean);
+    const id =
+      field.id || ensureFieldId(field.label || `field-${index + 1}`, `field-${index + 1}`, existingIds);
+    sanitized.push({
+      id,
+      label: field.label || `Champ ${index + 1}`,
+      type: field.type || "text",
+      placeholder: field.placeholder || "",
+      defaultValue: field.defaultValue || ""
+    });
+  });
+  return sanitized.length ? sanitized : [...DEFAULT_TOOLTIP_FIELDS];
+}
+
+function getTooltipFields(theme) {
+  return normalizeTooltipFields(theme);
 }
 
 function generateThemeKey(label) {
@@ -1338,11 +1390,39 @@ function buildTooltipContent(id, theme) {
   }
   if (theme.mode === "tooltip") {
     const payload = typeof value === "string" ? { description: value } : value;
-    const title = payload.title || country.name;
-    const description = payload.description || payload.text || payload.content || "Informations disponibles";
-    const preview = `<h4>${title}</h4><p>${description}</p>`;
-    const hasOverflow = description.length > 140;
-    const full = hasOverflow ? preview : preview;
+    const fields = getTooltipFields(theme);
+    const data = payload?.fields || {};
+    const values = fields.map((field) => ({
+      field,
+      value:
+        data[field.id] ??
+        payload?.[field.id] ??
+        (field.id === "title" ? payload?.title : field.id === "description" ? payload?.description : "")
+    }));
+    const title =
+      values.find((item) => item.field.id === "title")?.value ||
+      values[0]?.value ||
+      payload.title ||
+      country.name;
+    const description =
+      values.find((item) => item.field.id === "description")?.value ||
+      payload.description ||
+      payload.text ||
+      "Informations disponibles";
+    const previewFields = values.filter((item) => (item.value || "").toString().trim()).slice(0, 2);
+    const previewContent = previewFields
+      .map((item) => `<p>${item.value}</p>`)
+      .join("") || `<p>${description}</p>`;
+    const details = values
+      .filter((item) => (item.value || "").toString().trim())
+      .map(
+        (item) =>
+          `<p class="helper"><strong>${item.field.label} :</strong> ${item.value || "—"}</p>`
+      )
+      .join("") || `<p class="helper">Aucune information fournie.</p>`;
+    const full = `<h4>${title}</h4>${details}`;
+    const preview = `<h4>${title}</h4>${previewContent}`;
+    const hasOverflow = previewFields.length < values.length;
     return { preview, full, title, hasOverflow };
   }
   if (theme.mode === "category") {
@@ -1430,6 +1510,57 @@ function setupBurger() {
   });
 }
 
+function buildBackOfficeNav() {
+  const nav = document.getElementById("backOfficeNav");
+  if (!nav) return;
+
+  const activePanel = document.querySelector(".back-office__panel.is-active")?.id;
+
+  const createTab = (config) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `tab${config.isActive ? " is-active" : ""}`;
+    button.setAttribute("role", "tab");
+    button.setAttribute("aria-selected", config.isActive ? "true" : "false");
+    button.setAttribute("aria-controls", config.panelId);
+    button.tabIndex = config.isActive ? "0" : "-1";
+    if (config.themeKey) {
+      button.dataset.theme = config.themeKey;
+    }
+    button.textContent = config.label;
+    return button;
+  };
+
+  nav.innerHTML = "";
+  const themeTab = createTab({
+    label: "Thématiques",
+    panelId: "panel-themes",
+    isActive: activePanel === "panel-themes"
+  });
+  nav.appendChild(themeTab);
+
+  const entries = Object.entries(state.themes);
+  entries.forEach(([key, theme], index) => {
+    const isActive = activePanel
+      ? activePanel === "panel-config" && state.currentTheme === key
+      : state.currentTheme === key || (!state.currentTheme && index === 0);
+    const tab = createTab({
+      label: theme.label,
+      panelId: "panel-config",
+      themeKey: key,
+      isActive
+    });
+    nav.appendChild(tab);
+  });
+
+  const catalogsTab = createTab({
+    label: "Catalogues transverses",
+    panelId: "panel-catalogs",
+    isActive: activePanel === "panel-catalogs"
+  });
+  nav.appendChild(catalogsTab);
+}
+
 function buildBackOffice() {
   const themeSelect = document.getElementById("themeSelect");
   if (!themeSelect) return;
@@ -1438,6 +1569,8 @@ function buildBackOffice() {
   renderThemeChips();
   renderDynamicFields();
   setupThemeSelectListener();
+  buildBackOfficeNav();
+  setupBackOfficeTabs();
 
   const createThemeButton = document.getElementById("createTheme");
   if (createThemeButton) {
@@ -2002,17 +2135,26 @@ function renderThemeChips() {
     chip.appendChild(labelButton);
     chip.appendChild(typeBadge);
 
+    const actions = document.createElement("div");
+    actions.className = "theme-chip__actions";
+
+    const editButton = document.createElement("button");
+    editButton.type = "button";
+    editButton.title = "Modifier la thématique";
+    editButton.textContent = "✎";
+    editButton.addEventListener("click", () => openThemeEditModal(key));
+    actions.appendChild(editButton);
+
     if (isCustomTheme(key)) {
-      const actions = document.createElement("div");
-      actions.className = "theme-chip__actions";
       const deleteButton = document.createElement("button");
       deleteButton.type = "button";
       deleteButton.title = "Supprimer la thématique";
       deleteButton.textContent = "✕";
       deleteButton.addEventListener("click", () => removeTheme(key));
       actions.appendChild(deleteButton);
-      chip.appendChild(actions);
     }
+
+    chip.appendChild(actions);
 
     container.appendChild(chip);
   });
@@ -2045,17 +2187,19 @@ function populateThemeSelect() {
   themeSelect.value = state.currentTheme;
 }
 
-function buildLegendRows(container, onChange) {
+function buildLegendRows(container, onChange, initial = {}) {
   const row = document.createElement("div");
   row.className = "legend-row";
 
   const nameInput = document.createElement("input");
   nameInput.type = "text";
   nameInput.placeholder = "Nom de la zone";
+  nameInput.value = initial.name || "";
 
   const colorInput = document.createElement("input");
   colorInput.type = "color";
-  colorInput.value = getNextLegendColor({ legend: collectLegendValues(container) });
+  colorInput.value =
+    initial.color || getNextLegendColor({ legend: collectLegendValues(container) });
 
   const removeButton = document.createElement("button");
   removeButton.type = "button";
@@ -2088,6 +2232,172 @@ function collectLegendValues(container) {
   return legend;
 }
 
+function createTooltipFieldConfigurator(initialFields = []) {
+  let fields = normalizeTooltipFields({ fields: initialFields });
+  const wrapper = document.createElement("div");
+  wrapper.className = "tooltip-field-editor stack";
+
+  const helper = document.createElement("p");
+  helper.className = "helper";
+  helper.textContent =
+    "Définissez l'ordre et les libellés des champs proposés lors de la création d'une infobulle.";
+  wrapper.appendChild(helper);
+
+  const list = document.createElement("div");
+  list.className = "tooltip-field-editor__list";
+  wrapper.appendChild(list);
+
+  const render = () => {
+    list.innerHTML = "";
+    if (!fields.length) {
+      const empty = document.createElement("p");
+      empty.className = "helper";
+      empty.textContent = "Ajoutez au moins un champ pour compléter l'infobulle.";
+      list.appendChild(empty);
+      return;
+    }
+
+    fields.forEach((field, index) => {
+      const row = document.createElement("div");
+      row.className = "tooltip-field-editor__row";
+      row.draggable = true;
+      row.dataset.index = index;
+
+      row.addEventListener("dragstart", (event) => {
+        event.dataTransfer.setData("text/plain", String(index));
+        row.classList.add("is-dragging");
+      });
+      row.addEventListener("dragend", () => row.classList.remove("is-dragging"));
+      row.addEventListener("dragover", (event) => {
+        event.preventDefault();
+        row.classList.add("is-drop-target");
+      });
+      row.addEventListener("dragleave", () => row.classList.remove("is-drop-target"));
+      row.addEventListener("drop", (event) => {
+        event.preventDefault();
+        row.classList.remove("is-drop-target");
+        const fromIndex = Number(event.dataTransfer.getData("text/plain"));
+        const toIndex = Number(row.dataset.index);
+        if (!Number.isInteger(fromIndex) || !Number.isInteger(toIndex)) return;
+        const next = [...fields];
+        const [moved] = next.splice(fromIndex, 1);
+        next.splice(toIndex, 0, moved);
+        fields = next;
+        render();
+      });
+
+      const dragHandle = document.createElement("span");
+      dragHandle.className = "drag-handle";
+      dragHandle.textContent = "↕";
+
+      const inputs = document.createElement("div");
+      inputs.className = "tooltip-field-editor__inputs";
+
+      const label = document.createElement("label");
+      label.textContent = "Intitulé";
+      const labelInput = document.createElement("input");
+      labelInput.type = "text";
+      labelInput.value = field.label || "";
+      labelInput.addEventListener("input", (event) => {
+        const existing = fields.map((item) => item.id);
+        const current = fields[index] || field;
+        const nextId = ensureFieldId(event.target.value || current.id, current.id, existing);
+        fields[index] = { ...current, label: event.target.value, id: nextId };
+      });
+      label.appendChild(labelInput);
+
+      const typeLabel = document.createElement("label");
+      typeLabel.textContent = "Type";
+      const typeSelect = document.createElement("select");
+      [
+        { value: "text", label: "Texte" },
+        { value: "textarea", label: "Texte long" },
+        { value: "number", label: "Nombre" }
+      ].forEach((option) => {
+        const opt = document.createElement("option");
+        opt.value = option.value;
+        opt.textContent = option.label;
+        if (option.value === field.type) opt.selected = true;
+        typeSelect.appendChild(opt);
+      });
+      typeSelect.addEventListener("change", (event) => {
+        const current = fields[index] || field;
+        fields[index] = { ...current, type: event.target.value };
+      });
+      typeLabel.appendChild(typeSelect);
+
+      const placeholderLabel = document.createElement("label");
+      placeholderLabel.textContent = "Placeholder";
+      const placeholderInput = document.createElement("input");
+      placeholderInput.type = "text";
+      placeholderInput.value = field.placeholder || "";
+      placeholderInput.addEventListener("input", (event) => {
+        const current = fields[index] || field;
+        fields[index] = { ...current, placeholder: event.target.value };
+      });
+      placeholderLabel.appendChild(placeholderInput);
+
+      const defaultLabel = document.createElement("label");
+      defaultLabel.textContent = "Valeur par défaut";
+      const defaultInput = document.createElement("input");
+      defaultInput.type = field.type === "number" ? "number" : "text";
+      defaultInput.value = field.defaultValue || "";
+      defaultInput.addEventListener("input", (event) => {
+        const current = fields[index] || field;
+        fields[index] = { ...current, defaultValue: event.target.value };
+      });
+      defaultLabel.appendChild(defaultInput);
+
+      inputs.appendChild(label);
+      inputs.appendChild(typeLabel);
+      inputs.appendChild(placeholderLabel);
+      inputs.appendChild(defaultLabel);
+
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "ghost danger";
+      remove.textContent = "Supprimer";
+      remove.addEventListener("click", () => {
+        fields = fields.filter((_, i) => i !== index);
+        render();
+      });
+
+      row.appendChild(dragHandle);
+      row.appendChild(inputs);
+      row.appendChild(remove);
+      list.appendChild(row);
+    });
+  };
+
+  const addButton = document.createElement("button");
+  addButton.type = "button";
+  addButton.className = "ghost";
+  addButton.textContent = "Ajouter un champ";
+  addButton.addEventListener("click", () => {
+    const nextIndex = fields.length + 1;
+    const id = ensureFieldId(`champ-${nextIndex}`, `champ-${nextIndex}`, fields.map((f) => f.id));
+    fields = [
+      ...fields,
+      {
+        id,
+        label: `Nouveau champ ${nextIndex}`,
+        type: "text",
+        placeholder: "",
+        defaultValue: ""
+      }
+    ];
+    render();
+  });
+
+  wrapper.appendChild(addButton);
+  render();
+
+  return {
+    element: wrapper,
+    getFields: () => normalizeTooltipFields({ fields })
+  };
+}
+
 function openThemeCreationModal() {
   const wrapper = document.createElement("div");
   wrapper.className = "stack";
@@ -2103,12 +2413,17 @@ function openThemeCreationModal() {
   `;
 
   const tooltipConfig = document.createElement("div");
-  tooltipConfig.className = "inline-fields";
+  tooltipConfig.className = "stack";
   tooltipConfig.innerHTML = `
-    <label>Couleur d'accent
-      <input id="themeColor" type="color" value="#0ea5e9" />
-    </label>
+    <div class="inline-fields">
+      <label>Couleur d'accent
+        <input id="themeColor" type="color" value="#0ea5e9" />
+      </label>
+    </div>
   `;
+
+  const fieldConfigurator = createTooltipFieldConfigurator();
+  tooltipConfig.appendChild(fieldConfigurator.element);
 
   const legendConfig = document.createElement("div");
   legendConfig.className = "stack";
@@ -2129,7 +2444,7 @@ function openThemeCreationModal() {
   const toggleConfigVisibility = () => {
     const selectedMode =
       document.querySelector('input[name="themeMode"]:checked')?.value || "tooltip";
-    tooltipConfig.style.display = selectedMode === "tooltip" ? "grid" : "none";
+    tooltipConfig.style.display = selectedMode === "tooltip" ? "block" : "none";
     legendConfig.style.display = selectedMode === "category" ? "block" : "none";
   };
 
@@ -2163,6 +2478,7 @@ function openThemeCreationModal() {
     if (mode === "tooltip") {
       const colorInput = document.getElementById("themeColor");
       theme.color = colorInput?.value || "#0ea5e9";
+      theme.fields = fieldConfigurator.getFields();
     }
 
     if (mode === "category") {
@@ -2185,6 +2501,212 @@ function openThemeCreationModal() {
   });
 
   openModal(wrapper, "Nouvelle thématique");
+}
+
+function openThemeEditModal(themeKey) {
+  const theme = state.themes[themeKey];
+  if (!theme) return;
+
+  const wrapper = document.createElement("div");
+  wrapper.className = "stack";
+
+  const labelField = document.createElement("label");
+  labelField.innerHTML =
+    "Nom de la thématique<input id=\"themeName\" type=\"text\" placeholder=\"Nom affiché\" />";
+  const nameInput = labelField.querySelector("input");
+  nameInput.value = theme.label || "";
+
+  const typeField = document.createElement("div");
+  typeField.className = "stack";
+  typeField.innerHTML = `
+    <p class="eyebrow">Type</p>
+    <label class="pill-toggle"><input type="radio" name="themeMode" value="tooltip" />Infobulle (texte)</label>
+    <label class="pill-toggle"><input type="radio" name="themeMode" value="category" />Zones de couleur</label>
+    <label class="pill-toggle"><input type="radio" name="themeMode" value="numeric" />Valeur numérique</label>
+  `;
+  typeField
+    .querySelector(`input[value='${theme.mode || "tooltip"}']`)
+    ?.setAttribute("checked", "true");
+
+  const tooltipConfig = document.createElement("div");
+  tooltipConfig.className = "stack";
+  tooltipConfig.innerHTML = `
+    <div class="inline-fields">
+      <label>Couleur d'accent
+        <input id="themeColor" type="color" value="${theme.color || "#0ea5e9"}" />
+      </label>
+    </div>
+  `;
+  const tooltipConfigurator = createTooltipFieldConfigurator(getTooltipFields(theme));
+  tooltipConfig.appendChild(tooltipConfigurator.element);
+
+  const legendConfig = document.createElement("div");
+  legendConfig.className = "stack";
+  legendConfig.innerHTML = `<p class="helper">Définissez les catégories proposées.</p>`;
+  const legendRows = document.createElement("div");
+  legendRows.className = "legend-editor__list";
+  legendConfig.appendChild(legendRows);
+
+  const addLegendButton = document.createElement("button");
+  addLegendButton.type = "button";
+  addLegendButton.className = "ghost";
+  addLegendButton.textContent = "Ajouter une zone";
+  addLegendButton.addEventListener("click", () => buildLegendRows(legendRows));
+  legendConfig.appendChild(addLegendButton);
+
+  const existingLegend = Object.entries(theme.legend || {});
+  if (existingLegend.length) {
+    existingLegend.forEach(([name, color]) =>
+      buildLegendRows(legendRows, null, { name, color })
+    );
+  } else {
+    buildLegendRows(legendRows);
+  }
+
+  const toggleConfigVisibility = () => {
+    const selectedMode =
+      document.querySelector('input[name="themeMode"]:checked')?.value || theme.mode || "tooltip";
+    tooltipConfig.style.display = selectedMode === "tooltip" ? "block" : "none";
+    legendConfig.style.display = selectedMode === "category" ? "block" : "none";
+  };
+
+  typeField.querySelectorAll("input[name='themeMode']").forEach((input) => {
+    input.addEventListener("change", toggleConfigVisibility);
+  });
+  toggleConfigVisibility();
+
+  wrapper.appendChild(labelField);
+  wrapper.appendChild(typeField);
+  wrapper.appendChild(tooltipConfig);
+  wrapper.appendChild(legendConfig);
+
+  bindModalSubmit("Enregistrer", () => {
+    const themeLabel = nameInput?.value.trim();
+    if (!themeLabel) {
+      alert("Merci d'indiquer un nom de thématique");
+      return;
+    }
+    const mode = document.querySelector('input[name="themeMode"]:checked')?.value || "tooltip";
+    const updated = { ...theme, label: themeLabel, mode };
+
+    if (mode === "tooltip") {
+      const colorInput = document.getElementById("themeColor");
+      updated.color = colorInput?.value || "#0ea5e9";
+      updated.fields = tooltipConfigurator.getFields();
+    } else {
+      delete updated.fields;
+    }
+
+    if (mode === "category") {
+      const legend = collectLegendValues(legendRows);
+      if (!Object.keys(legend).length) {
+        alert("Ajoutez au moins une catégorie pour continuer");
+        return;
+      }
+      updated.legend = legend;
+      updated.allowCustomLegend = true;
+    }
+
+    state.themes = { ...state.themes, [themeKey]: updated };
+    persistThemes();
+    buildMenu();
+    buildBackOffice();
+    selectTheme(themeKey);
+    closeModal();
+    showToast("Thématique mise à jour", "success");
+  });
+
+  openModal(wrapper, "Modifier la thématique");
+}
+
+function openTooltipFieldModal(themeKey) {
+  const theme = state.themes[themeKey];
+  if (!theme) return;
+
+  const wrapper = document.createElement("div");
+  wrapper.className = "stack";
+
+  const configurator = createTooltipFieldConfigurator(getTooltipFields(theme));
+  wrapper.appendChild(configurator.element);
+
+  bindModalSubmit("Enregistrer", () => {
+    const fields = configurator.getFields();
+    if (!fields.length) {
+      alert("Ajoutez au moins un champ pour configurer l'infobulle.");
+      return;
+    }
+
+    state.themes = { ...state.themes, [themeKey]: { ...theme, fields } };
+    persistThemes();
+    buildMenu();
+    buildBackOffice();
+    selectTheme(themeKey);
+    closeModal();
+    showToast("Champs d'infobulle mis à jour", "success");
+  });
+
+  openModal(wrapper, "Champs de l'infobulle");
+}
+
+function buildTooltipFieldSummary(themeKey, theme) {
+  const section = document.createElement("div");
+  section.className = "back-office__section";
+
+  const header = document.createElement("header");
+  header.className = "back-office__section-header";
+  const heading = document.createElement("div");
+  heading.innerHTML = `<p class="eyebrow">Infobulle</p><h4>Champs disponibles</h4>`;
+  header.appendChild(heading);
+
+  const action = document.createElement("button");
+  action.type = "button";
+  action.className = "ghost";
+  action.textContent = "Modifier";
+  action.addEventListener("click", () => openTooltipFieldModal(themeKey));
+  header.appendChild(action);
+
+  section.appendChild(header);
+
+  const list = document.createElement("div");
+  list.className = "field-pill-list";
+  const fields = getTooltipFields(theme);
+  fields.forEach((field) => {
+    const pill = document.createElement("div");
+    pill.className = "field-pill";
+    pill.innerHTML = `<strong>${field.label}</strong><span>${field.type}</span>`;
+    list.appendChild(pill);
+  });
+
+  if (!fields.length) {
+    const helper = document.createElement("p");
+    helper.className = "helper";
+    helper.textContent = "Aucun champ configuré pour cette infobulle.";
+    list.appendChild(helper);
+  }
+
+  section.appendChild(list);
+  return section;
+}
+
+function buildTooltipFieldInputs(container, fields) {
+  if (!container) return;
+  container.innerHTML = "";
+  fields.forEach((field) => {
+    const label = document.createElement("label");
+    label.textContent = field.label || field.id;
+    let input;
+    if (field.type === "textarea") {
+      input = document.createElement("textarea");
+    } else {
+      input = document.createElement("input");
+      input.type = field.type === "number" ? "number" : "text";
+    }
+    input.id = `field-${field.id}`;
+    if (field.placeholder) input.placeholder = field.placeholder;
+    if (field.defaultValue) input.value = field.defaultValue;
+    label.appendChild(input);
+    container.appendChild(label);
+  });
 }
 
 function buildCategoryField(themeKey, theme) {
@@ -2735,13 +3257,13 @@ function renderDynamicFields() {
     buildProspectingMatrix();
     dynamic.appendChild(createSaveActions());
   } else if (theme.mode === "tooltip") {
+    dynamic.appendChild(buildTooltipFieldSummary(themeKey, theme));
     const creationPanel = document.createElement("div");
     creationPanel.id = "creationPanel";
     creationPanel.className = "creation-panel";
     creationPanel.innerHTML = `
       <p class="helper">Sélectionnez un ou plusieurs pays puis définissez le contenu de l'infobulle.</p>
-      <label>Titre de l'infobulle<input id="field-tooltipTitle" type="text" placeholder="Titre affiché" /></label>
-      <label>Description détaillée<textarea id="field-tooltipDescription" placeholder="Texte présenté dans l'infobulle"></textarea></label>
+      <div id="tooltipFieldInputs" class="stack tooltip-field-form"></div>
       <div class="country-chip-selector">
         <label for="countrySearch">Pays concernés</label>
         <input id="countrySearch" type="search" list="countryOptions" placeholder="Rechercher un pays" />
@@ -2750,14 +3272,17 @@ function renderDynamicFields() {
       </div>
     `;
 
+    const fields = getTooltipFields(theme);
+    buildTooltipFieldInputs(creationPanel.querySelector("#tooltipFieldInputs"), fields);
+
     dynamic.appendChild(
       buildCreationButton("Créer une infobulle", () => {
-        const titleField = document.getElementById("field-tooltipTitle");
-        const descriptionField = document.getElementById("field-tooltipDescription");
-        if (titleField) titleField.value = "";
-        if (descriptionField) descriptionField.value = "";
+        buildTooltipFieldInputs(creationPanel.querySelector("#tooltipFieldInputs"), fields);
         setCountrySelection([]);
-        document.getElementById("field-tooltipTitle")?.focus();
+        const firstInput = creationPanel.querySelector(
+          "#tooltipFieldInputs input, #tooltipFieldInputs textarea"
+        );
+        firstInput?.focus();
       })
     );
     dynamic.appendChild(buildTooltipThemeSummary(themeKey));
@@ -3674,15 +4199,30 @@ function handleBackOfficeSubmit(e) {
     if (!selectedCountries.length) {
       return handleSaveError("Merci de sélectionner au moins un pays");
     }
-    const title = document.getElementById("field-tooltipTitle")?.value.trim();
-    const description = document.getElementById("field-tooltipDescription")?.value.trim();
-    if (!title && !description) {
-      return handleSaveError("Merci de saisir un titre ou une description");
+    const fields = getTooltipFields(theme);
+    const values = {};
+    fields.forEach((field) => {
+      const input = document.getElementById(`field-${field.id}`);
+      if (input) {
+        values[field.id] = input.value;
+      }
+    });
+    const hasContent = Object.values(values).some(
+      (value) => typeof value === "string" && value.trim().length
+    );
+    if (!hasContent) {
+      return handleSaveError("Merci de compléter au moins un champ de l'infobulle");
     }
+    theme.fields = fields;
     selectedCountries.forEach((countryId) => {
       theme.data[countryId] = {
-        title: title || COUNTRIES.find((c) => c.id === countryId)?.name || countryId,
-        description: description || ""
+        fields: values,
+        title:
+          values.title ||
+          COUNTRIES.find((c) => c.id === countryId)?.name ||
+          values[fields[0]?.id] ||
+          countryId,
+        description: values.description || values[fields[1]?.id] || ""
       };
     });
   } else if (theme.mode === "numeric") {

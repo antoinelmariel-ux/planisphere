@@ -54,29 +54,7 @@
         <button class="ghost" id="closeBackOffice">Fermer</button>
       </div>
     </div>
-    <div class="back-office__nav" role="tablist" aria-label="Navigation du back-office">
-      <button class="tab" id="tab-themes" role="tab" aria-selected="false" aria-controls="panel-themes">
-        Thématiques
-      </button>
-      <button class="tab is-active" id="tab-entities" data-theme="countryProfile" role="tab" aria-selected="true" aria-controls="panel-config">
-        Entités
-      </button>
-      <button class="tab" id="tab-embargo" data-theme="embargo" role="tab" aria-selected="false" aria-controls="panel-config">
-        Embargo
-      </button>
-      <button class="tab" id="tab-corruption" data-theme="corruptionIndex" role="tab" aria-selected="false" aria-controls="panel-config">
-        Indice de perception de la corruption
-      </button>
-      <button class="tab" id="tab-area" data-theme="areaManager" role="tab" aria-selected="false" aria-controls="panel-config">
-        Area Manager
-      </button>
-      <button class="tab" id="tab-prospecting" data-theme="prospecting" role="tab" aria-selected="false" aria-controls="panel-config">
-        En prospection
-      </button>
-      <button class="tab" id="tab-catalogs" role="tab" aria-selected="false" aria-controls="panel-catalogs">
-        Catalogues transverses
-      </button>
-    </div>
+    <div id="backOfficeNav" class="back-office__nav" role="tablist" aria-label="Navigation du back-office"></div>
 
     <form id="backOfficeForm" class="back-office__form">
       <section id="panel-themes" class="back-office__panel" role="tabpanel" aria-labelledby="tab-themes" aria-hidden="true" hidden>
@@ -173,7 +151,7 @@
   </aside>
 
   <footer class="footer">
-    <p>Planisphère compliance – version <strong id="versionLabel">0.18.0</strong></p>
+    <p>Planisphère compliance – version <strong id="versionLabel">0.19.0</strong></p>
   </footer>
 
   <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>

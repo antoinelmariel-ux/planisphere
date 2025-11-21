@@ -1184,6 +1184,74 @@ textarea {
   gap: 8px;
 }
 
+.tooltip-field-editor {
+  border: 1px solid var(--stroke);
+  border-radius: 14px;
+  padding: 12px;
+  background: #ffffff;
+}
+
+.tooltip-field-editor__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tooltip-field-editor__row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px dashed var(--stroke);
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.tooltip-field-editor__row.is-drop-target {
+  border-color: var(--accent);
+  background: #eef5ff;
+}
+
+.tooltip-field-editor__inputs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px 12px;
+}
+
+.drag-handle {
+  cursor: grab;
+  font-size: 18px;
+  user-select: none;
+  color: var(--muted);
+}
+
+.tooltip-field-form label {
+  display: block;
+}
+
+.field-pill-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.field-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid var(--stroke);
+  border-radius: 999px;
+  background: #ffffff;
+  font-size: 14px;
+}
+
+.field-pill span {
+  color: var(--muted);
+  text-transform: capitalize;
+}
+
 .summary-row .helper {
   margin-top: 4px;
 }
