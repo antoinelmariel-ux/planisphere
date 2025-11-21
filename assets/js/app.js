@@ -1,4 +1,4 @@
-const APP_VERSION = "0.21.0";
+const APP_VERSION = "0.22.0";
 const WORLD_SVG_PATH = "assets/world.svg";
 const CORRUPTION_INDEX_PATH = "assets/ICP2024.json";
 
@@ -1735,13 +1735,13 @@ function getNextLegendColor(theme) {
 
 function updateLegendEntry(themeKey, previousLabel, nextLabel, color) {
   const theme = state.themes[themeKey];
-  if (!theme || !previousLabel) return;
+  if (!theme || !previousLabel) return false;
   const legend = { ...(theme.legend || {}) };
   const data = { ...(theme.data || {}) };
 
   if (legend[nextLabel] && previousLabel !== nextLabel) {
     alert("Une liste avec ce nom existe déjà");
-    return;
+    return false;
   }
 
   delete legend[previousLabel];
@@ -1763,15 +1763,16 @@ function updateLegendEntry(themeKey, previousLabel, nextLabel, color) {
   if (previousLabel !== nextLabel) {
     renderDynamicFields();
   }
+  return true;
 }
 
 function addLegendEntry(themeKey, label, color) {
   const theme = state.themes[themeKey];
-  if (!theme) return;
+  if (!theme) return false;
   const legend = { ...(theme.legend || {}) };
   if (legend[label]) {
     alert("Cette liste existe déjà");
-    return;
+    return false;
   }
 
   legend[label] = color || getNextLegendColor(theme);
@@ -1783,6 +1784,34 @@ function addLegendEntry(themeKey, label, color) {
     buildLegend();
   }
   renderDynamicFields();
+  return true;
+}
+
+function deleteLegendEntry(themeKey, label) {
+  const theme = state.themes[themeKey];
+  if (!theme || !label) return false;
+  if (!confirm(`Supprimer la zone "${label}" et les attributions associées ?`)) {
+    return false;
+  }
+
+  const legend = { ...(theme.legend || {}) };
+  const data = { ...(theme.data || {}) };
+  delete legend[label];
+  Object.entries(data).forEach(([countryId, value]) => {
+    if (value === label) {
+      delete data[countryId];
+    }
+  });
+
+  const updatedTheme = { ...theme, legend, data };
+  state.themes = { ...state.themes, [themeKey]: updatedTheme };
+  persistThemes();
+  if (state.currentTheme === themeKey) {
+    refreshColors();
+    buildLegend();
+  }
+  renderDynamicFields();
+  return true;
 }
 
 function buildLegendEditor(themeKey, theme) {
@@ -1799,69 +1828,170 @@ function buildLegendEditor(themeKey, theme) {
     `<div><div class="eyebrow">Listes</div><strong>Gérer les légendes</strong></div><p class="helper">${helperText}</p>`;
   container.appendChild(header);
 
+  const summary = document.createElement("div");
+  summary.className = "legend-editor__summary";
+  const summaryCopy = document.createElement("div");
+  summaryCopy.innerHTML =
+    `<p class="helper">Chaque zone dispose d'un libellé et d'une couleur unique. Validez vos changements pour garder une légende cohérente.</p><p class="helper helper--hint">Les mises à jour sont appliquées immédiatement sur la carte et dans les formulaires.</p>`;
+  summary.appendChild(summaryCopy);
+  const badge = document.createElement("span");
+  badge.className = "badge";
+  const updateBadge = () => {
+    const count = Object.keys(state.themes[themeKey]?.legend || {}).length;
+    badge.textContent = `${count || 0} zone${count > 1 ? "s" : ""} configurée${
+      count > 1 ? "s" : ""
+    }`;
+  };
+  updateBadge();
+  summary.appendChild(badge);
+  container.appendChild(summary);
+
+  const columns = document.createElement("div");
+  columns.className = "legend-editor__columns";
+  columns.innerHTML = `<span>Libellé</span><span>Couleur</span><span class="visually-hidden">Actions</span>`;
+  container.appendChild(columns);
+
   const listContainer = document.createElement("div");
   listContainer.className = "legend-editor__list";
-
-  Object.entries(theme.legend || {}).forEach(([label, color]) => {
-    const row = document.createElement("div");
-    row.className = "legend-row";
-
-    const nameInput = document.createElement("input");
-    nameInput.type = "text";
-    nameInput.value = label;
-    nameInput.placeholder = "Nom de la liste";
-
-    const colorInput = document.createElement("input");
-    colorInput.type = "color";
-    colorInput.value = color;
-
-    nameInput.addEventListener("blur", () => {
-      const nextLabel = nameInput.value.trim();
-      if (!nextLabel) {
-        nameInput.value = label;
-        return;
-      }
-      updateLegendEntry(themeKey, label, nextLabel, colorInput.value);
-    });
-
-    colorInput.addEventListener("input", () => {
-      const nextLabel = nameInput.value.trim() || label;
-      updateLegendEntry(themeKey, label, nextLabel, colorInput.value);
-    });
-
-    row.appendChild(nameInput);
-    row.appendChild(colorInput);
-    listContainer.appendChild(row);
-  });
-
   container.appendChild(listContainer);
+
+  const renderLegendList = () => {
+    listContainer.innerHTML = "";
+    const entries = Object.entries(state.themes[themeKey]?.legend || {});
+    if (!entries.length) {
+      const empty = document.createElement("p");
+      empty.className = "legend-editor__empty helper";
+      empty.textContent =
+        "Ajoutez des zones pour structurer la légende de cette thématique.";
+      listContainer.appendChild(empty);
+      return;
+    }
+
+    entries.forEach(([label, color]) => {
+      let currentLabel = label;
+      const row = document.createElement("div");
+      row.className = "legend-row legend-row--card";
+
+      const nameField = document.createElement("label");
+      nameField.className = "legend-row__field";
+      nameField.innerHTML = `<span class="legend-row__label">Nom de la zone</span>`;
+      const nameInput = document.createElement("input");
+      nameInput.type = "text";
+      nameInput.placeholder = "Ex. Zone prioritaire";
+      nameInput.value = currentLabel;
+      nameField.appendChild(nameInput);
+
+      const colorField = document.createElement("label");
+      colorField.className = "legend-row__field";
+      colorField.innerHTML = `<span class="legend-row__label">Couleur</span>`;
+      const colorInput = document.createElement("input");
+      colorInput.type = "color";
+      colorInput.value = color;
+      const colorValue = document.createElement("span");
+      colorValue.className = "legend-row__hint";
+      colorValue.textContent = color.toUpperCase();
+      colorInput.addEventListener("input", () => {
+        colorValue.textContent = colorInput.value.toUpperCase();
+      });
+      colorField.appendChild(colorInput);
+      colorField.appendChild(colorValue);
+
+      const actions = document.createElement("div");
+      actions.className = "legend-row__actions";
+
+      const saveButton = document.createElement("button");
+      saveButton.type = "button";
+      saveButton.className = "ghost";
+      saveButton.textContent = "Mettre à jour";
+      saveButton.addEventListener("click", () => {
+        const nextLabel = nameInput.value.trim();
+        const nextColor = colorInput.value;
+        if (!nextLabel) {
+          nameInput.focus();
+          return;
+        }
+        const success = updateLegendEntry(themeKey, currentLabel, nextLabel, nextColor);
+        if (success) {
+          currentLabel = nextLabel;
+          colorValue.textContent = nextColor.toUpperCase();
+          updateBadge();
+        }
+      });
+
+      const deleteButton = document.createElement("button");
+      deleteButton.type = "button";
+      deleteButton.className = "ghost danger";
+      deleteButton.textContent = "Supprimer";
+      deleteButton.addEventListener("click", () => {
+        const removed = deleteLegendEntry(themeKey, currentLabel);
+        if (removed) {
+          renderLegendList();
+          updateBadge();
+        }
+      });
+
+      actions.appendChild(saveButton);
+      actions.appendChild(deleteButton);
+
+      row.appendChild(nameField);
+      row.appendChild(colorField);
+      row.appendChild(actions);
+      listContainer.appendChild(row);
+    });
+  };
+
+  const creationIntro = document.createElement("div");
+  creationIntro.className = "legend-editor__creation";
+  creationIntro.innerHTML =
+    `<p class="eyebrow">Nouvelle zone</p><p class="helper">Définissez un nom clair et choisissez une couleur contrastée pour qu'elle soit immédiatement reconnaissable.</p>`;
+  container.appendChild(creationIntro);
 
   const form = document.createElement("div");
   form.className = "legend-editor__form";
   const nameInput = document.createElement("input");
   nameInput.type = "text";
-  nameInput.placeholder = "Nom de la nouvelle liste";
+  nameInput.placeholder = "Nom de la nouvelle zone";
 
   const colorInput = document.createElement("input");
   colorInput.type = "color";
   colorInput.value = getNextLegendColor(theme);
+  const colorHelper = document.createElement("span");
+  colorHelper.className = "legend-row__hint";
+  colorHelper.textContent = colorInput.value.toUpperCase();
+  colorInput.addEventListener("input", () => {
+    colorHelper.textContent = colorInput.value.toUpperCase();
+  });
 
   const addButton = document.createElement("button");
   addButton.type = "button";
+  addButton.className = "primary";
   addButton.textContent =
-    themeKey === "embargo" ? "Créer une liste d'embargo" : "Ajouter une liste";
+    themeKey === "embargo" ? "Créer une liste d'embargo" : "Ajouter une zone";
   addButton.addEventListener("click", () => {
     const label = nameInput.value.trim();
-    if (!label) return alert("Merci d'indiquer un nom de liste");
-    addLegendEntry(themeKey, label, colorInput.value);
+    if (!label) {
+      nameInput.focus();
+      return;
+    }
+    const created = addLegendEntry(themeKey, label, colorInput.value);
+    if (!created) return;
     nameInput.value = "";
     colorInput.value = getNextLegendColor(state.themes[themeKey]);
+    colorHelper.textContent = colorInput.value.toUpperCase();
+    renderLegendList();
+    updateBadge();
   });
 
+  const colorWrapper = document.createElement("div");
+  colorWrapper.className = "legend-row__field";
+  colorWrapper.appendChild(colorInput);
+  colorWrapper.appendChild(colorHelper);
+
   form.appendChild(nameInput);
-  form.appendChild(colorInput);
+  form.appendChild(colorWrapper);
   form.appendChild(addButton);
   container.appendChild(form);
+  renderLegendList();
 
   return container;
 }
