@@ -1,4 +1,4 @@
-const APP_VERSION = "0.19.0";
+const APP_VERSION = "0.20.0";
 const WORLD_SVG_PATH = "assets/world.svg";
 const CORRUPTION_INDEX_PATH = "assets/ICP2024.json";
 
@@ -536,7 +536,6 @@ const state = {
   map: null,
   countryLayers: {},
   defaultViewBox: VIEWBOX_FALLBACK,
-  hasUnsavedChanges: false,
   isSaving: false,
   currentTooltipDetail: null
 };
@@ -654,21 +653,6 @@ function showToast(message, type = "success") {
   toastTimeout = setTimeout(() => toast.classList.remove("is-visible"), 4000);
 }
 
-function updateUnsavedIndicator() {
-  const indicator = document.getElementById("unsavedIndicator");
-  if (!indicator) return;
-  const isDirty = !!state.hasUnsavedChanges;
-  indicator.classList.toggle("is-visible", isDirty);
-  indicator.textContent = isDirty
-    ? "Modifications non enregistrées"
-    : "Toutes les modifications sont enregistrées";
-}
-
-function setUnsavedChanges(value) {
-  state.hasUnsavedChanges = value;
-  updateUnsavedIndicator();
-}
-
 function setSavingState(isSaving) {
   state.isSaving = isSaving;
   const saveButtons = document.querySelectorAll("[data-save-control]");
@@ -700,18 +684,6 @@ function setupCategoryColorPreview() {
   const sync = () => updateCategoryColorPreview(colorInput.value);
   colorInput.addEventListener("input", sync);
   sync();
-}
-
-function setupChangeTracking() {
-  const form = document.getElementById("backOfficeForm");
-  if (!form) return;
-  const markDirty = () => {
-    if (!state.isSaving) {
-      setUnsavedChanges(true);
-    }
-  };
-  form.addEventListener("input", markDirty);
-  form.addEventListener("change", markDirty);
 }
 
 function handleSaveError(message) {
@@ -4264,7 +4236,6 @@ function handleBackOfficeSubmit(e) {
   state.themes = { ...state.themes, [themeKey]: { ...theme, data: { ...theme.data } } };
   persistThemes();
   selectTheme(themeKey);
-  setUnsavedChanges(false);
   setSavingState(false);
   showToast("Modifications enregistrées avec succès", "success");
 }
@@ -4348,23 +4319,6 @@ function setupBackOffice() {
   toggle.addEventListener("click", () => panel.classList.toggle("is-open"));
   close.addEventListener("click", () => panel.classList.remove("is-open"));
   document.getElementById("backOfficeForm")?.addEventListener("submit", handleBackOfficeSubmit);
-  document.getElementById("resetData")?.addEventListener("click", () => {
-    state.themes = cloneThemes(DEFAULT_THEMES);
-    state.currentTheme = Object.keys(state.themes)[0] || null;
-    state.medicines = [...DEFAULT_MEDICINES];
-    state.priorities = [...DEFAULT_PRIORITIES];
-    state.selectedEntityId = null;
-    persistThemes();
-    persistMedicines();
-    persistPriorities();
-    buildMenu();
-    buildBackOffice();
-    buildMedicineCatalog();
-    buildPriorityCatalog();
-    selectTheme(state.currentTheme);
-    setUnsavedChanges(false);
-    showToast("Données réinitialisées", "success");
-  });
   const saveButton = document.getElementById("saveConfiguration");
   if (saveButton) {
     saveButton.addEventListener("click", exportThemes);
@@ -4372,8 +4326,6 @@ function setupBackOffice() {
   setupMedicineCatalog();
   setupPriorityCatalog();
   setupBackOfficeTabs();
-  setupChangeTracking();
-  setUnsavedChanges(false);
 
   const modal = document.getElementById("modalOverlay");
   const closeModalButton = document.getElementById("closeModal");
