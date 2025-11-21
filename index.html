@@ -55,6 +55,9 @@
       </div>
     </div>
     <div class="back-office__nav" role="tablist" aria-label="Navigation du back-office">
+      <button class="tab" id="tab-themes" role="tab" aria-selected="false" aria-controls="panel-themes">
+        Thématiques
+      </button>
       <button class="tab is-active" id="tab-entities" data-theme="countryProfile" role="tab" aria-selected="true" aria-controls="panel-config">
         Entités
       </button>
@@ -76,24 +79,36 @@
     </div>
 
     <form id="backOfficeForm" class="back-office__form">
+      <section id="panel-themes" class="back-office__panel" role="tabpanel" aria-labelledby="tab-themes" aria-hidden="true" hidden>
+        <div class="config-detail">
+          <section class="theme-manager" aria-labelledby="themeManagerTitle">
+            <header class="theme-manager__header">
+              <div>
+                <p class="eyebrow">Thématiques</p>
+                <h4 id="themeManagerTitle">Gestion des thématiques</h4>
+                <p class="helper">Créez des thématiques d'infobulle ou de zones colorées puis sélectionnez celle à configurer.</p>
+              </div>
+              <div class="theme-manager__actions">
+                <button type="button" id="createTheme" class="ghost">Nouvelle thématique</button>
+              </div>
+            </header>
+            <div id="themeChips" class="theme-manager__chips" aria-live="polite"></div>
+            <label class="theme-manager__selector">Thématique à configurer
+              <select id="themeSelect"></select>
+            </label>
+          </section>
+        </div>
+      </section>
+
       <section id="panel-config" class="back-office__panel is-active" role="tabpanel" aria-labelledby="tab-entities">
           <div class="config-detail">
-            <section class="theme-manager" aria-labelledby="themeManagerTitle">
-              <header class="theme-manager__header">
-                <div>
-                  <p class="eyebrow">Thématiques</p>
-                  <h4 id="themeManagerTitle">Gestion des thématiques</h4>
-                  <p class="helper">Créez des thématiques d'infobulle ou de zones colorées puis sélectionnez celle à configurer.</p>
-                </div>
-                <div class="theme-manager__actions">
-                  <button type="button" id="createTheme" class="ghost">Nouvelle thématique</button>
-                </div>
-              </header>
-              <div id="themeChips" class="theme-manager__chips" aria-live="polite"></div>
-              <label class="theme-manager__selector">Thématique à configurer
-                <select id="themeSelect"></select>
-              </label>
-            </section>
+            <header class="back-office__section-header">
+              <div>
+                <p class="eyebrow">Configuration</p>
+                <h4>Paramétrage des entités</h4>
+              </div>
+              <p class="helper">Choisissez la thématique dans l'onglet Thématiques puis complétez ses informations ici.</p>
+            </header>
             <div class="back-office__utilities" role="status" aria-live="polite">
               <span id="unsavedIndicator" class="unsaved-indicator">Modifications non enregistrées</span>
               <div class="utility-actions">
@@ -158,7 +173,7 @@
   </aside>
 
   <footer class="footer">
-    <p>Planisphère compliance – version <strong id="versionLabel">0.17.0</strong></p>
+    <p>Planisphère compliance – version <strong id="versionLabel">0.18.0</strong></p>
   </footer>
 
   <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
