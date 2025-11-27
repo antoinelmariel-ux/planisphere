@@ -325,6 +325,39 @@ p {
   box-shadow: 0 0 0 1px rgba(47, 128, 237, 0.25);
 }
 
+.legend-guide {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  margin-bottom: 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(92, 107, 246, 0.2);
+  background: linear-gradient(120deg, rgba(92, 107, 246, 0.08), rgba(255, 255, 255, 0.8));
+  box-shadow: var(--shadow);
+}
+
+.legend-checklist {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.legend-checklist li {
+  position: relative;
+  padding-left: 20px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.legend-checklist li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+}
+
 main {
   display: flex;
   flex-direction: column;
@@ -378,6 +411,31 @@ main {
   color: var(--muted);
 }
 
+.legend.legend--placeholder {
+  flex-direction: column;
+  align-items: flex-start;
+  background: #ffffff;
+  border: 1px dashed var(--stroke);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.legend__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.legend__title {
+  display: grid;
+  gap: 4px;
+}
+
+.legend__title strong {
+  color: var(--text);
+}
+
 .legend-item {
   display: flex;
   align-items: center;
@@ -400,6 +458,40 @@ main {
   width: 220px;
   border-radius: 8px;
   border: 1px solid rgba(15, 23, 42, 0.12);
+}
+
+.legend-preview {
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+  padding: 12px;
+  background: #f8fafc;
+  display: grid;
+  gap: 8px;
+}
+
+.legend-preview__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--muted);
+}
+
+.legend-preview__grid {
+  display: grid;
+  gap: 6px;
+}
+
+.legend-preview__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.legend-preview__swatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
 }
 
 .tooltip {
@@ -1204,6 +1296,35 @@ a.ghost {
   grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
   gap: 12px;
   align-items: center;
+}
+
+.vocabulary-hints {
+  border: 1px dashed var(--stroke);
+  border-radius: 10px;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+  background: #f8fafc;
+}
+
+.vocabulary-hints__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.vocabulary-chip {
+  border: 1px solid rgba(92, 107, 246, 0.25);
+  background: rgba(92, 107, 246, 0.08);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.vocabulary-chip:hover {
+  border-color: var(--accent);
 }
 
 .category-field {

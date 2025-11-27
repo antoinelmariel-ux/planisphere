@@ -1,4 +1,4 @@
-const APP_VERSION = "0.25.0";
+const APP_VERSION = "0.26.0";
 const WORLD_SVG_PATH = "assets/world.svg";
 const CORRUPTION_INDEX_PATH = "assets/ICP2024.json";
 
@@ -1088,6 +1088,23 @@ function setMenuOpen(isOpen) {
   }
 }
 
+function startLegendCreationFlow() {
+  const panel = document.getElementById("backOffice");
+  panel?.classList.add("is-open");
+  const themesTab = document.querySelector('#backOfficeNav .tab[aria-controls="panel-themes"]');
+  themesTab?.click();
+  panel?.scrollTo({ top: 0, behavior: "smooth" });
+  openThemeCreationModal();
+}
+
+function setupLegendGuidance() {
+  const menuButton = document.getElementById("legendGuideButton");
+  const heroButton = document.getElementById("heroLegendButton");
+  [menuButton, heroButton]
+    .filter(Boolean)
+    .forEach((button) => button.addEventListener("click", startLegendCreationFlow));
+}
+
 function buildMenu() {
   const list = document.getElementById("themeList");
   list.innerHTML = "";
@@ -1277,17 +1294,55 @@ function refreshColors() {
   });
 }
 
+function buildLegendPlaceholder(container, { eyebrow, title, helper }) {
+  container.classList.add("legend--placeholder");
+  const legendTitle = document.createElement("div");
+  legendTitle.className = "legend__title";
+  legendTitle.innerHTML = `<p class="eyebrow">${eyebrow}</p><strong>${title}</strong><p class="helper">${helper}</p>`;
+
+  const preview = createLegendPreview(buildSampleLegendFromCatalogs());
+
+  const cta = document.createElement("button");
+  cta.type = "button";
+  cta.className = "primary";
+  cta.textContent = "Ajouter une légende";
+  cta.addEventListener("click", startLegendCreationFlow);
+
+  container.appendChild(legendTitle);
+  container.appendChild(preview.element);
+  container.appendChild(cta);
+}
+
 function buildLegend() {
   const container = document.getElementById("legend");
   const theme = state.themes[state.currentTheme];
   container.innerHTML = "";
+  container.classList.remove("legend--placeholder");
+
   if (!theme) {
-    const message = document.createElement("p");
-    message.className = "helper";
-    message.textContent = "Aucune thématique disponible.";
-    container.appendChild(message);
+    buildLegendPlaceholder(container, {
+      eyebrow: "Légende",
+      title: "Commencez par créer une thématique",
+      helper: "Ajoutez une légende pour visualiser immédiatement vos zones et pictos."
+    });
     return;
   }
+
+  const header = document.createElement("div");
+  header.className = "legend__header";
+  const title = document.createElement("div");
+  title.className = "legend__title";
+  title.innerHTML = `<p class="eyebrow">Légende en direct</p><strong>${theme.label}</strong>`;
+  header.appendChild(title);
+
+  const cta = document.createElement("button");
+  cta.type = "button";
+  cta.className = "ghost";
+  cta.textContent = "Ajuster la légende";
+  cta.addEventListener("click", startLegendCreationFlow);
+  header.appendChild(cta);
+  container.appendChild(header);
+
   if (theme.mode === "numeric") {
     const gradient = document.createElement("div");
     gradient.className = "gradient-bar";
@@ -1301,7 +1356,18 @@ function buildLegend() {
     item.appendChild(label);
     container.appendChild(item);
   } else if (theme.mode === "category") {
-    Object.entries(theme.legend).forEach(([label, color]) => {
+    const entries = Object.entries(theme.legend || {});
+    if (!entries.length) {
+      container.innerHTML = "";
+      buildLegendPlaceholder(container, {
+        eyebrow: "Légende",
+        title: "Prévisualisation instantanée",
+        helper: "Ajoutez des catégories pour alimenter la palette ci-dessous et la carte."
+      });
+      return;
+    }
+
+    entries.forEach(([label, color]) => {
       const item = document.createElement("div");
       item.className = "legend-item";
       const swatch = document.createElement("span");
@@ -1777,6 +1843,101 @@ function setupPriorityCatalog() {
 
 const LEGEND_COLORS = ["#ef4444", "#f97316", "#6366f1", "#0ea5e9", "#22c55e", "#facc15"];
 
+function buildSampleLegendFromCatalogs() {
+  const labels = [...state.priorities.slice(0, 2), ...state.medicines.slice(0, 1)];
+  if (!labels.length) {
+    return {
+      "Zone prioritaire": "#ef4444",
+      "Zone à suivre": "#f97316",
+      "Zone stable": "#22c55e"
+    };
+  }
+
+  const sampleLegend = {};
+  labels.forEach((label, index) => {
+    sampleLegend[label] = LEGEND_COLORS[index % LEGEND_COLORS.length];
+  });
+  return sampleLegend;
+}
+
+function createLegendPreview(initialLegend = {}) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "legend-preview";
+
+  const header = document.createElement("div");
+  header.className = "legend-preview__header";
+  header.innerHTML = `<strong>Prévisualisation</strong><span class="helper">Mise à jour en direct</span>`;
+  wrapper.appendChild(header);
+
+  const grid = document.createElement("div");
+  grid.className = "legend-preview__grid";
+  wrapper.appendChild(grid);
+
+  const render = (legend = initialLegend) => {
+    grid.innerHTML = "";
+    const entries = Object.entries(legend || {});
+    const source = entries.length ? legend : buildSampleLegendFromCatalogs();
+
+    Object.entries(source).forEach(([label, color]) => {
+      const row = document.createElement("div");
+      row.className = "legend-preview__item";
+      const swatch = document.createElement("span");
+      swatch.className = "legend-preview__swatch";
+      swatch.style.background = color;
+      const text = document.createElement("span");
+      text.textContent = label;
+      row.appendChild(swatch);
+      row.appendChild(text);
+      grid.appendChild(row);
+    });
+  };
+
+  render(initialLegend);
+  return { element: wrapper, render };
+}
+
+function buildVocabularyHints(onPick) {
+  const container = document.createElement("div");
+  container.className = "vocabulary-hints";
+
+  const header = document.createElement("div");
+  header.innerHTML = `
+    <p class="eyebrow">Référentiels</p>
+    <p class="helper">Utilisez vos catalogues pour nommer les catégories : un clic copie le libellé.</p>
+  `;
+  container.appendChild(header);
+
+  const chips = document.createElement("div");
+  chips.className = "vocabulary-hints__chips";
+  container.appendChild(chips);
+
+  let hasEntries = false;
+  [
+    { title: "Médicaments", entries: state.medicines },
+    { title: "Priorités", entries: state.priorities }
+  ].forEach(({ title, entries }) => {
+    entries.slice(0, 5).forEach((label) => {
+      hasEntries = true;
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "vocabulary-chip";
+      chip.title = `${title}`;
+      chip.innerHTML = `<span class="eyebrow">${title}</span> ${label}`;
+      chip.addEventListener("click", () => onPick?.(label));
+      chips.appendChild(chip);
+    });
+  });
+
+  if (!hasEntries) {
+    const empty = document.createElement("p");
+    empty.className = "helper";
+    empty.textContent = "Ajoutez des entrées dans vos catalogues pour alimenter les libellés.";
+    chips.appendChild(empty);
+  }
+
+  return container;
+}
+
 function getNextLegendColor(theme) {
   const used = new Set(Object.values(theme.legend || {}));
   const available = LEGEND_COLORS.find((color) => !used.has(color));
@@ -1864,6 +2025,12 @@ function removeLegendEntry(themeKey, label) {
 function buildLegendEditor(themeKey, theme) {
   const container = document.createElement("div");
   container.className = "legend-editor";
+
+  const legendPreview = createLegendPreview(theme.legend || {});
+  const refreshPreview = () => {
+    const currentTheme = state.themes[themeKey] || theme;
+    legendPreview.render(currentTheme.legend || {});
+  };
 
   const header = document.createElement("div");
   header.className = "legend-editor__header";
@@ -1969,10 +2136,13 @@ function buildLegendEditor(themeKey, theme) {
       row.appendChild(actions);
       listContainer.appendChild(row);
     });
+
+    refreshPreview();
   };
 
   renderRows();
   container.appendChild(listContainer);
+  container.appendChild(legendPreview.element);
 
   const form = document.createElement("div");
   form.className = "legend-editor__form";
@@ -2006,6 +2176,13 @@ function buildLegendEditor(themeKey, theme) {
   form.appendChild(colorInput);
   form.appendChild(addButton);
   container.appendChild(form);
+
+  container.appendChild(
+    buildVocabularyHints((label) => {
+      nameInput.value = label;
+      nameInput.focus();
+    })
+  );
 
   return container;
 }
@@ -2594,14 +2771,34 @@ function openThemeCreationModal() {
   legendRows.className = "legend-editor__list";
   legendConfig.appendChild(legendRows);
 
+  const legendPreview = createLegendPreview();
+  const renderLegendPreview = () => legendPreview.render(collectLegendValues(legendRows));
+
+  const applyVocabularyLabel = (label) => {
+    const target = legendRows.querySelector(".legend-row:last-child input[type='text']");
+    if (target) {
+      target.value = label;
+      target.dispatchEvent(new Event("input"));
+      renderLegendPreview();
+    }
+  };
+
+  const vocabularyHints = buildVocabularyHints(applyVocabularyLabel);
+
   const addLegendButton = document.createElement("button");
   addLegendButton.type = "button";
   addLegendButton.className = "ghost";
   addLegendButton.textContent = "Ajouter une zone";
-  addLegendButton.addEventListener("click", () => buildLegendRows(legendRows));
+  addLegendButton.addEventListener("click", () => {
+    buildLegendRows(legendRows, renderLegendPreview);
+    renderLegendPreview();
+  });
   legendConfig.appendChild(addLegendButton);
+  legendConfig.appendChild(legendPreview.element);
+  legendConfig.appendChild(vocabularyHints);
 
-  hydrateLegendRows(legendRows);
+  hydrateLegendRows(legendRows, {}, renderLegendPreview);
+  renderLegendPreview();
 
   const toggleConfigVisibility = () => {
     const selectedMode =
@@ -2639,7 +2836,8 @@ function openThemeCreationModal() {
     }
 
     if (template.mode === "category") {
-      hydrateLegendRows(legendRows, template.legend || {});
+      hydrateLegendRows(legendRows, template.legend || {}, renderLegendPreview);
+      renderLegendPreview();
     }
   };
 
@@ -2764,14 +2962,33 @@ function openThemeEditModal(themeKey) {
   legendRows.className = "legend-editor__list";
   legendConfig.appendChild(legendRows);
 
+  const legendPreview = createLegendPreview(theme.legend || {});
+  const renderLegendPreview = () => legendPreview.render(collectLegendValues(legendRows));
+
+  const applyVocabularyLabel = (label) => {
+    const target = legendRows.querySelector(".legend-row:last-child input[type='text']");
+    if (target) {
+      target.value = label;
+      target.dispatchEvent(new Event("input"));
+      renderLegendPreview();
+    }
+  };
+
   const addLegendButton = document.createElement("button");
   addLegendButton.type = "button";
   addLegendButton.className = "ghost";
   addLegendButton.textContent = "Ajouter une zone";
-  addLegendButton.addEventListener("click", () => buildLegendRows(legendRows));
+  addLegendButton.addEventListener("click", () => {
+    buildLegendRows(legendRows, renderLegendPreview);
+    renderLegendPreview();
+  });
   legendConfig.appendChild(addLegendButton);
 
-  hydrateLegendRows(legendRows, theme.legend || {});
+  legendConfig.appendChild(legendPreview.element);
+  legendConfig.appendChild(buildVocabularyHints(applyVocabularyLabel));
+
+  hydrateLegendRows(legendRows, theme.legend || {}, renderLegendPreview);
+  renderLegendPreview();
 
   const toggleConfigVisibility = () => {
     const selectedMode =
@@ -4606,6 +4823,7 @@ async function init() {
   setupBurger();
   buildBackOffice();
   setupBackOffice();
+  setupLegendGuidance();
   setupInfoModal();
   setupZoomControls();
   selectTheme(state.currentTheme);
