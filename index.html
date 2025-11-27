@@ -26,6 +26,7 @@
       <p class="lead">Accédez à vos thématiques, contrôlez la carte et partagez les fiches pays avec une interface minimaliste et professionnelle.</p>
       <div class="hero__actions">
         <a class="primary" href="#map">Ouvrir la carte</a>
+        <button class="ghost" id="heroLegendButton" type="button">Créer une légende</button>
         <a class="ghost" href="#backOffice">Aller au back-office</a>
       </div>
       <div class="hero__chips">
@@ -85,6 +86,19 @@
 
   <div class="layout">
     <nav id="themeMenu" class="theme-menu" aria-label="Choix de thématique">
+      <div class="legend-guide">
+        <div>
+          <p class="eyebrow">Guidage légende</p>
+          <h3>Ajouter une légende en 3 étapes</h3>
+          <p class="helper">Nommer, définir les couleurs/pictos et assigner les infos-bulles : vos choix impactent la carte en direct.</p>
+        </div>
+        <ul class="legend-checklist" aria-label="Étapes de création de légende">
+          <li>Nommer la thématique et choisir son mode</li>
+          <li>Définir les zones couleur ou pictos</li>
+          <li>Associer les champs d'info-bulle</li>
+        </ul>
+        <button id="legendGuideButton" class="primary" type="button">Ajouter une légende</button>
+      </div>
       <h2>Thématiques</h2>
       <ul id="themeList"></ul>
     </nav>
@@ -214,7 +228,7 @@
   </aside>
 
   <footer class="footer">
-    <p>Planisphère compliance – version <strong id="versionLabel">0.25.0</strong></p>
+    <p>Planisphère compliance – version <strong id="versionLabel">0.26.0</strong></p>
   </footer>
 
   <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
