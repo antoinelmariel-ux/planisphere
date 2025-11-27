@@ -1,4 +1,4 @@
-const APP_VERSION = "0.24.0";
+const APP_VERSION = "0.25.0";
 const WORLD_SVG_PATH = "assets/world.svg";
 const CORRUPTION_INDEX_PATH = "assets/ICP2024.json";
 
@@ -519,6 +519,57 @@ const DEFAULT_TOOLTIP_FIELDS = [
     defaultValue: ""
   }
 ];
+
+const THEME_TEMPLATES = [
+  {
+    id: "country-profile",
+    label: "Profil pays",
+    description: "Infobulle structurée avec statut, contact clé et lien utile.",
+    mode: "tooltip",
+    color: "#0ea5e9",
+    fields: [
+      { id: "title", label: "Titre", type: "text", placeholder: "Nom de la fiche", defaultValue: "" },
+      {
+        id: "description",
+        label: "Description",
+        type: "textarea",
+        placeholder: "Résumé concis de la situation",
+        defaultValue: ""
+      },
+      { id: "status", label: "Statut", type: "text", placeholder: "Actif, à surveiller…", defaultValue: "" },
+      { id: "contact", label: "Contact clé", type: "text", placeholder: "Nom et rôle", defaultValue: "" },
+      {
+        id: "link",
+        label: "Lien utile",
+        type: "text",
+        placeholder: "URL ou ressource interne",
+        defaultValue: ""
+      }
+    ]
+  },
+  {
+    id: "colored-areas",
+    label: "Zones colorées",
+    description: "Palette prête à l'emploi pour cartographier les priorités.",
+    mode: "category",
+    allowCustomLegend: true,
+    legend: {
+      "Zone prioritaire": "#ef4444",
+      "Zone à suivre": "#f97316",
+      "Zone stable": "#22c55e",
+      "Non couverte": "#cbd5e1"
+    }
+  },
+  {
+    id: "numeric-score",
+    label: "Score chiffré",
+    description: "Échelle de 0 à 100 avec dégradé bleu.",
+    mode: "numeric",
+    domain: [0, 100],
+    palette: ["#dbeafe", "#60a5fa", "#1d4ed8"]
+  }
+];
+
 
 const initialThemes = loadThemes();
 const initialThemeKey = Object.keys(initialThemes)[0] || null;
@@ -2313,6 +2364,17 @@ function collectLegendValues(container) {
   return legend;
 }
 
+function hydrateLegendRows(container, legend = {}, onChange) {
+  container.innerHTML = "";
+  const entries = Object.entries(legend || {});
+  if (!entries.length) {
+    buildLegendRows(container, onChange);
+    return;
+  }
+
+  entries.forEach(([name, color]) => buildLegendRows(container, onChange, { name, color }));
+}
+
 function createTooltipFieldConfigurator(initialFields = []) {
   let fields = normalizeTooltipFields({ fields: initialFields });
   const wrapper = document.createElement("div");
@@ -2475,15 +2537,33 @@ function createTooltipFieldConfigurator(initialFields = []) {
 
   return {
     element: wrapper,
-    getFields: () => normalizeTooltipFields({ fields })
+    getFields: () => normalizeTooltipFields({ fields }),
+    setFields: (nextFields = []) => {
+      fields = normalizeTooltipFields({ fields: nextFields });
+      render();
+    }
   };
 }
 
 function openThemeCreationModal() {
+  let selectedTemplate = null;
   const wrapper = document.createElement("div");
   wrapper.className = "stack";
   const labelField = document.createElement("label");
   labelField.innerHTML = "Nom de la thématique<input id=\"themeName\" type=\"text\" placeholder=\"Ex. Couverture produits\" />";
+
+  const templateSection = document.createElement("div");
+  templateSection.className = "stack";
+  const templateHeader = document.createElement("div");
+  templateHeader.innerHTML = `
+    <p class="eyebrow">Gabarits</p>
+    <p class="helper">Pré-remplissez la création grâce aux modèles de champs, légendes et couleurs.</p>
+  `;
+  templateSection.appendChild(templateHeader);
+
+  const templateGrid = document.createElement("div");
+  templateGrid.className = "template-grid";
+  templateSection.appendChild(templateGrid);
 
   const typeField = document.createElement("div");
   typeField.className = "stack";
@@ -2491,6 +2571,7 @@ function openThemeCreationModal() {
     <p class="eyebrow">Type</p>
     <label class="pill-toggle"><input type="radio" name="themeMode" value="tooltip" checked />Infobulle (texte)</label>
     <label class="pill-toggle"><input type="radio" name="themeMode" value="category" />Zones de couleur</label>
+    <label class="pill-toggle"><input type="radio" name="themeMode" value="numeric" />Valeur numérique</label>
   `;
 
   const tooltipConfig = document.createElement("div");
@@ -2520,7 +2601,7 @@ function openThemeCreationModal() {
   addLegendButton.addEventListener("click", () => buildLegendRows(legendRows));
   legendConfig.appendChild(addLegendButton);
 
-  buildLegendRows(legendRows);
+  hydrateLegendRows(legendRows);
 
   const toggleConfigVisibility = () => {
     const selectedMode =
@@ -2534,7 +2615,57 @@ function openThemeCreationModal() {
   });
   toggleConfigVisibility();
 
+  const colorInput = tooltipConfig.querySelector("#themeColor");
+
+  const applyTemplate = (template) => {
+    selectedTemplate = template;
+    templateGrid.querySelectorAll(".template-card").forEach((card) =>
+      card.classList.toggle("is-active", card.dataset.templateId === template.id)
+    );
+    const nameInput = labelField.querySelector("#themeName");
+    if (nameInput) nameInput.value = template.label;
+
+    const modeInput = typeField.querySelector(`input[value='${template.mode}']`);
+    if (modeInput) {
+      modeInput.checked = true;
+    }
+    toggleConfigVisibility();
+
+    if (template.mode === "tooltip") {
+      if (colorInput) {
+        colorInput.value = template.color || colorInput.value;
+      }
+      fieldConfigurator.setFields(template.fields || DEFAULT_TOOLTIP_FIELDS);
+    }
+
+    if (template.mode === "category") {
+      hydrateLegendRows(legendRows, template.legend || {});
+    }
+  };
+
+  THEME_TEMPLATES.forEach((template) => {
+    const card = document.createElement("button");
+    card.type = "button";
+    card.dataset.templateId = template.id;
+    card.className = "template-card";
+    const modeLabel =
+      template.mode === "category" ? "Zones" : template.mode === "numeric" ? "Indice" : "Infobulle";
+    card.innerHTML = `
+      <div class="template-card__head">
+        <span class="pill">${modeLabel}</span>
+        <strong>${template.label}</strong>
+      </div>
+      <p class="helper">${template.description}</p>
+    `;
+
+    card.addEventListener("click", () => applyTemplate(template));
+    templateGrid.appendChild(card);
+  });
+
+  applyTemplate(THEME_TEMPLATES[0]);
+
   wrapper.appendChild(labelField);
+  wrapper.appendChild(templateSection);
   wrapper.appendChild(typeField);
   wrapper.appendChild(tooltipConfig);
   wrapper.appendChild(legendConfig);
@@ -2557,7 +2688,6 @@ function openThemeCreationModal() {
     const theme = { label: themeLabel, mode, data: {} };
 
     if (mode === "tooltip") {
-      const colorInput = document.getElementById("themeColor");
       theme.color = colorInput?.value || "#0ea5e9";
       theme.fields = fieldConfigurator.getFields();
     }
@@ -2569,7 +2699,13 @@ function openThemeCreationModal() {
         return;
       }
       theme.legend = legend;
-      theme.allowCustomLegend = true;
+      theme.allowCustomLegend = selectedTemplate?.allowCustomLegend ?? true;
+    }
+
+    if (mode === "numeric") {
+      const template = selectedTemplate?.mode === "numeric" ? selectedTemplate : null;
+      if (template?.domain) theme.domain = template.domain;
+      if (template?.palette) theme.palette = template.palette;
     }
 
     state.themes = { ...state.themes, [themeKey]: theme };
@@ -2635,14 +2771,7 @@ function openThemeEditModal(themeKey) {
   addLegendButton.addEventListener("click", () => buildLegendRows(legendRows));
   legendConfig.appendChild(addLegendButton);
 
-  const existingLegend = Object.entries(theme.legend || {});
-  if (existingLegend.length) {
-    existingLegend.forEach(([name, color]) =>
-      buildLegendRows(legendRows, null, { name, color })
-    );
-  } else {
-    buildLegendRows(legendRows);
-  }
+  hydrateLegendRows(legendRows, theme.legend || {});
 
   const toggleConfigVisibility = () => {
     const selectedMode =
