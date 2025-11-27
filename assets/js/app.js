@@ -1,4 +1,4 @@
-const APP_VERSION = "0.23.0";
+const APP_VERSION = "0.24.0";
 const WORLD_SVG_PATH = "assets/world.svg";
 const CORRUPTION_INDEX_PATH = "assets/ICP2024.json";
 
@@ -1965,6 +1965,22 @@ function setFieldValue(id, value) {
   input.value = value ?? "";
 }
 
+function applyTooltipValues(fields, payload = {}) {
+  fields.forEach((field) => {
+    const input = document.getElementById(`field-${field.id}`);
+    if (!input) return;
+    const values = payload.fields || {};
+    const fallback = field.defaultValue || "";
+    const storedValue =
+      values[field.id] ??
+      payload[field.id] ??
+      (field.id === "title" ? payload.title : undefined) ??
+      (field.id === "description" ? payload.description : undefined) ??
+      fallback;
+    input.value = storedValue;
+  });
+}
+
 function setCheckedValues(containerId, values) {
   const container = document.getElementById(containerId);
   if (!container) return;
@@ -2135,8 +2151,8 @@ function buildCreationButton(label, onClick) {
   button.className = "primary";
   button.textContent = label;
   button.addEventListener("click", () => {
-    showCreationPanel();
     onClick?.();
+    showCreationPanel();
   });
 
   container.appendChild(button);
@@ -3343,6 +3359,9 @@ function renderDynamicFields() {
     dynamic.appendChild(
       buildCreationButton("Créer une infobulle", () => {
         buildTooltipFieldInputs(creationPanel.querySelector("#tooltipFieldInputs"), fields);
+        creationPanel.dataset.countryId = "";
+        creationPanel.dataset.modalTitle = "Créer une infobulle";
+        applyTooltipValues(fields, {});
         setCountrySelection([]);
         const firstInput = creationPanel.querySelector(
           "#tooltipFieldInputs input, #tooltipFieldInputs textarea"
@@ -3704,20 +3723,15 @@ function buildTooltipThemeSummary(themeKey) {
     editButton.className = "ghost";
     editButton.textContent = "Modifier";
     editButton.addEventListener("click", () => {
-      showCreationPanel();
       const creationPanel = document.getElementById("creationPanel");
       if (creationPanel) {
         creationPanel.dataset.countryId = countryId;
+        creationPanel.dataset.modalTitle = `Modifier l'infobulle – ${country?.name || countryId}`;
       }
       setCountrySelection([countryId]);
-      const titleField = document.getElementById("field-tooltipTitle");
-      const descriptionField = document.getElementById("field-tooltipDescription");
-      if (titleField) {
-        titleField.value = title;
-      }
-      if (descriptionField) {
-        descriptionField.value = description;
-      }
+      const fields = getTooltipFields(state.themes[themeKey]);
+      applyTooltipValues(fields, value);
+      showCreationPanel();
       const backOffice = document.getElementById("backOffice");
       backOffice?.scrollTo({ top: 0, behavior: "smooth" });
     });
