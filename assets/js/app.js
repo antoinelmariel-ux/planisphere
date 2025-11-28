@@ -1,4 +1,4 @@
-const APP_VERSION = "0.27.0";
+const APP_VERSION = "0.28.0";
 const WORLD_SVG_PATH = "assets/world.svg";
 const CORRUPTION_INDEX_PATH = "assets/ICP2024.json";
 
@@ -655,6 +655,26 @@ function ensureFieldId(label, fallback, existing = []) {
   return candidate;
 }
 
+function humanizeFieldId(id) {
+  const label = (id || "")
+    .toString()
+    .replace(/[-_]+/g, " ")
+    .trim();
+  if (!label) return "Champ";
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+function createTooltipFieldFromId(id) {
+  const safeId = (id || "").toString().trim();
+  return {
+    id: safeId,
+    label: humanizeFieldId(safeId),
+    type: "text",
+    placeholder: "",
+    defaultValue: ""
+  };
+}
+
 function normalizeTooltipFields(theme) {
   const fields = Array.isArray(theme?.fields) ? theme.fields : [];
   if (!fields.length) return [...DEFAULT_TOOLTIP_FIELDS];
@@ -675,8 +695,31 @@ function normalizeTooltipFields(theme) {
   return sanitized.length ? sanitized : [...DEFAULT_TOOLTIP_FIELDS];
 }
 
-function getTooltipFields(theme) {
-  return normalizeTooltipFields(theme);
+function collectTooltipFieldIds(entries = []) {
+  const ids = new Set();
+  entries.forEach((entry) => {
+    if (!entry) return;
+    Object.keys(entry.fields || {}).forEach((key) => ids.add(key));
+    Object.keys(entry || {})
+      .filter((key) => !["fields", "title", "description"].includes(key))
+      .forEach((key) => ids.add(key));
+  });
+  return ids;
+}
+
+function getTooltipFields(theme, payload) {
+  const normalizedFields = normalizeTooltipFields(theme);
+  const existingIds = new Set(normalizedFields.map((field) => field.id));
+  const sources = [payload, ...Object.values(theme?.data || {})];
+  const additionalIds = collectTooltipFieldIds(sources);
+
+  additionalIds.forEach((id) => {
+    if (!id || existingIds.has(id)) return;
+    normalizedFields.push(createTooltipFieldFromId(id));
+    existingIds.add(id);
+  });
+
+  return normalizedFields;
 }
 
 function generateThemeKey(label) {
