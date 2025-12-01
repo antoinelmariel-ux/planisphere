@@ -1,4 +1,4 @@
-const APP_VERSION = "0.28.0";
+const APP_VERSION = "0.29.0";
 const WORLD_SVG_PATH = "assets/world.svg";
 const CORRUPTION_INDEX_PATH = "assets/ICP2024.json";
 
@@ -3645,8 +3645,7 @@ function renderDynamicFields() {
     setupEntityRevenuePreview();
     bindEntityDeleteAction();
     populateSelectedEntity();
-    const hasEntities = Object.keys(theme.data || {}).length > 0;
-    const shouldShowForm = !!state.selectedEntityId || !hasEntities;
+    const shouldShowForm = !!state.selectedEntityId;
     setCreationPanelVisibility(creationPanel, shouldShowForm);
   } else if (themeKey === "embargo") {
     const creationPanel = document.createElement("div");
@@ -3692,8 +3691,7 @@ function renderDynamicFields() {
     attachCreationPanel(creationPanel, "Créer une liste d'embargo");
     setupCountrySearch();
     setupCategoryColorPreview();
-    const shouldShowForm = !Object.keys(theme.data || {}).length;
-    setCreationPanelVisibility(creationPanel, shouldShowForm);
+    setCreationPanelVisibility(creationPanel, false);
   } else if (themeKey === "corruptionIndex") {
     const tableWrapper = document.createElement("div");
     tableWrapper.className = "corruption-table";
@@ -3761,8 +3759,7 @@ function renderDynamicFields() {
     dynamic.appendChild(buildTooltipThemeSummary(themeKey));
     attachCreationPanel(creationPanel, "Créer une infobulle");
     setupCountrySearch();
-    const shouldShowForm = !Object.keys(theme.data || {}).length;
-    setCreationPanelVisibility(creationPanel, shouldShowForm);
+    setCreationPanelVisibility(creationPanel, false);
   } else if (theme.mode === "numeric") {
     dynamic.innerHTML = `<label>Valeur numérique<input id="field-numeric" type="number" step="0.1" /></label>`;
     dynamic.appendChild(createSaveActions());

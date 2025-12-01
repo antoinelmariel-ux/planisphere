@@ -94,76 +94,6 @@ p {
   justify-content: flex-end;
 }
 
-.hero {
-  max-width: 1200px;
-  margin: 20px auto;
-  padding: 24px;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 18px;
-}
-
-.hero__content {
-  background: linear-gradient(135deg, rgba(92, 107, 246, 0.18), rgba(139, 92, 246, 0.14));
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  border-radius: 24px;
-  padding: 22px;
-  box-shadow: var(--shadow);
-  backdrop-filter: blur(18px);
-  display: grid;
-  gap: 14px;
-}
-
-.hero__actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.hero__chips {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(92, 107, 246, 0.18);
-  padding: 8px 12px;
-  border-radius: 999px;
-  color: var(--text);
-  font-weight: 600;
-}
-
-.hero__widgets {
-  display: grid;
-  gap: 12px;
-}
-
-.glass-card {
-  background: linear-gradient(120deg, rgba(255, 255, 255, 0.82), rgba(239, 242, 255, 0.9));
-  border: 1px solid rgba(255, 255, 255, 0.55);
-  border-radius: 20px;
-  padding: 18px;
-  box-shadow: var(--shadow);
-  backdrop-filter: blur(14px);
-}
-
-.hero-card h3 {
-  margin: 0;
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-
 .pill {
   background: rgba(92, 107, 246, 0.1);
   color: var(--text);
@@ -178,32 +108,8 @@ p {
   border-color: rgba(16, 185, 129, 0.4);
 }
 
-.pill-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 12px;
-}
-
-.lead {
-  font-size: 15px;
-  color: var(--muted);
-}
-
 .muted {
   color: var(--muted);
-}
-
-.badge-soft {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.88);
-  border: 1px solid rgba(92, 107, 246, 0.18);
-  color: var(--text);
-  font-weight: 700;
-  width: fit-content;
 }
 
 .toggle-row {
@@ -265,7 +171,7 @@ p {
   gap: 20px;
   padding: 0 24px 80px;
   max-width: 1200px;
-  margin: 0 auto 40px;
+  margin: 20px auto 40px;
 }
 
 .theme-menu {
